@@ -1,4 +1,4 @@
-import type { Product } from "./types"
+import type { Product, User, Commande } from "./types"
 
 const products: Product[] = [
   {
@@ -80,7 +80,118 @@ const products: Product[] = [
   },
 ]
 
+const users: User[] = [
+  {
+    id: 1,
+    email: "admin@besma.com",
+    password: "admin123", // In a real app, this would be hashed
+    role: "admin",
+    nom: "Admin",
+    prenom: "System",
+    createdAt: "2024-01-01T00:00:00Z",
+    lastLogin: "2024-03-20T10:30:00Z"
+  },
+  {
+    id: 2,
+    email: "jean.dupont@example.com",
+    password: "user123", // In a real app, this would be hashed
+    role: "user",
+    nom: "Dupont",
+    prenom: "Jean",
+    createdAt: "2024-02-15T14:20:00Z",
+    lastLogin: "2024-03-19T15:45:00Z"
+  },
+  {
+    id: 3,
+    email: "marie.martin@example.com",
+    password: "user456", // In a real app, this would be hashed
+    role: "user",
+    nom: "Martin",
+    prenom: "Marie",
+    createdAt: "2024-03-01T09:15:00Z",
+    lastLogin: "2024-03-20T08:30:00Z"
+  }
+]
+
+const commandes: Commande[] = [
+  {
+    id: 1,
+    date: "2024-03-20T10:30:00Z",
+    etat: "en attente",
+    clientId: 2,
+    produits: [
+      { produitId: 1, quantite: 2 },
+      { produitId: 3, quantite: 1 }
+    ],
+    total: 69.97
+  },
+  {
+    id: 2,
+    date: "2024-03-19T15:45:00Z",
+    etat: "confirmée",
+    clientId: 3,
+    produits: [
+      { produitId: 2, quantite: 1 },
+      { produitId: 4, quantite: 3 }
+    ],
+    total: 129.96
+  },
+  {
+    id: 3,
+    date: "2024-03-18T09:15:00Z",
+    etat: "expédiée",
+    clientId: 2,
+    produits: [
+      { produitId: 5, quantite: 2 },
+      { produitId: 6, quantite: 1 }
+    ],
+    total: 71.98
+  }
+]
+
+// Product CRUD operations
+export function addProduct(product: Omit<Product, 'id'>): Product {
+  const products = getProducts()
+  const newProduct: Product = {
+    ...product,
+    id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1
+  }
+  const updatedProducts = [...products, newProduct]
+  localStorage.setItem('products', JSON.stringify(updatedProducts))
+  return newProduct
+}
+
+export function updateProduct(id: number, updatedProduct: Partial<Product>): Product | null {
+  const products = getProducts()
+  const index = products.findIndex(p => p.id === id)
+  
+  if (index === -1) return null
+  
+  const updatedProducts = [...products]
+  updatedProducts[index] = { ...updatedProducts[index], ...updatedProduct }
+  localStorage.setItem('products', JSON.stringify(updatedProducts))
+  return updatedProducts[index]
+}
+
+export function deleteProduct(id: number): boolean {
+  const products = getProducts()
+  const updatedProducts = products.filter(p => p.id !== id)
+  
+  if (updatedProducts.length === products.length) return false
+  
+  localStorage.setItem('products', JSON.stringify(updatedProducts))
+  return true
+}
+
+// Modified getProducts to use localStorage
 export function getProducts(): Product[] {
+  const storedProducts = localStorage.getItem('products')
+  if (storedProducts) {
+    return JSON.parse(storedProducts)
+  }
+  
+  // Initialize with mock data if no products in localStorage
+  localStorage.setItem('products', JSON.stringify(products))
   return products
 }
 
@@ -91,3 +202,85 @@ export function getProductById(id: number): Product | null {
 export function getProductsByCategory(category: "vetement" | "nourriture" | "seance"): Product[] {
   return products.filter((product) => product.category === category)
 }
+
+export function getUsers(): User[] {
+  const storedUsers = localStorage.getItem('users')
+  if (storedUsers) {
+    return JSON.parse(storedUsers)
+  }
+  
+  // Initialize with mock data if no users in localStorage
+  localStorage.setItem('users', JSON.stringify(users))
+  return users
+}
+
+export function getUserById(id: number): User | null {
+  return getUsers().find((user) => user.id === id) || null
+}
+
+export function getUserByEmail(email: string): User | null {
+  return getUsers().find((user) => user.email === email) || null
+}
+
+export function getUsersByRole(role: "admin" | "user"): User[] {
+  return getUsers().filter((user) => user.role === role)
+}
+
+export function getCommandes(): Commande[] {
+  const storedCommandes = localStorage.getItem('commandes')
+  if (storedCommandes) {
+    return JSON.parse(storedCommandes)
+  }
+  
+  // Initialize with mock data if no commandes in localStorage
+  localStorage.setItem('commandes', JSON.stringify(commandes))
+  return commandes
+}
+
+export function getCommandeById(id: number): Commande | undefined {
+  return getCommandes().find((commande) => commande.id === id)
+}
+
+export function getCommandesByEtat(etat: "en attente" | "confirmée" | "expédiée" | "livrée"): Commande[] {
+  return getCommandes().filter((commande) => commande.etat === etat)
+}
+
+export function getCommandesByClient(clientId: number): Commande[] {
+  return getCommandes().filter((commande) => commande.clientId === clientId)
+}
+
+// Order CRUD operations
+export function addCommande(commande: Omit<Commande, 'id'>): Commande {
+  const commandes = getCommandes()
+  const newCommande: Commande = {
+    ...commande,
+    id: commandes.length > 0 ? Math.max(...commandes.map(c => c.id)) + 1 : 1
+  }
+  const updatedCommandes = [...commandes, newCommande]
+  localStorage.setItem('commandes', JSON.stringify(updatedCommandes))
+  return newCommande
+}
+
+export function updateCommande(id: number, updatedCommande: Partial<Commande>): Commande | null {
+  const commandes = getCommandes()
+  const index = commandes.findIndex(c => c.id === id)
+  
+  if (index === -1) return null
+  
+  const updatedCommandes = [...commandes]
+  updatedCommandes[index] = { ...updatedCommandes[index], ...updatedCommande }
+  localStorage.setItem('commandes', JSON.stringify(updatedCommandes))
+  return updatedCommandes[index]
+}
+
+export function deleteCommande(id: number): boolean {
+  const commandes = getCommandes()
+  const updatedCommandes = commandes.filter(c => c.id !== id)
+  
+  if (updatedCommandes.length === commandes.length) return false
+  
+  localStorage.setItem('commandes', JSON.stringify(updatedCommandes))
+  return true
+}
+
+export type { Product }

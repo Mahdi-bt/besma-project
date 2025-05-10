@@ -34,3 +34,14 @@ export interface Commande {
   }[]
   total: number
 }
+
+export interface User {
+  id: number
+  email: string
+  password: string
+  role: "admin" | "user"
+  nom: string
+  prenom: string
+  createdAt: string
+  lastLogin?: string
+}

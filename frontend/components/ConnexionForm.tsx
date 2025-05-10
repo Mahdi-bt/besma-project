@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { getUserByEmail } from "../lib/data"
 
 export default function ConnexionForm() {
   const router = useRouter()
@@ -28,50 +29,40 @@ export default function ConnexionForm() {
     setError("")
 
     try {
-      // First try admin login
-      const adminResponse = await fetch("http://localhost:8000/api/auth/admin_login.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        }),
-      })
+      // Find user by email
+      const user = getUserByEmail(formData.email)
 
-      const adminData = await adminResponse.json()
-
-      if (adminResponse.ok) {
-        // Admin login successful
-        localStorage.setItem("user", JSON.stringify(adminData.admin))
-        localStorage.setItem("userType", "admin")
-        router.push("/admin/dashboard")
-        return
+      if (!user) {
+        throw new Error("Email ou mot de passe incorrect.")
       }
 
-      // If admin login fails, try client login
-      const clientResponse = await fetch("http://localhost:8000/api/auth/login.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        }),
-      })
-
-      const clientData = await clientResponse.json()
-
-      if (!clientResponse.ok) {
-        throw new Error(clientData.message || "Email ou mot de passe incorrect.")
+      // Check password
+      if (user.password !== formData.password) {
+        throw new Error("Email ou mot de passe incorrect.")
       }
 
-      // Client login successful
-      localStorage.setItem("user", JSON.stringify(clientData.user))
-      localStorage.setItem("userType", "client")
-      router.push("/dashboard")
+      // Store user data in localStorage
+      const userData = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        nom: user.nom,
+        prenom: user.prenom
+      }
+      localStorage.setItem("user", JSON.stringify(userData))
+
+      // Dispatch login event
+      window.dispatchEvent(new Event('userLogin'))
+
+      // Add a small delay to ensure localStorage is updated
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Redirect based on role
+      if (user.role === "admin") {
+        router.replace("/admin/dashboard")
+      } else {
+        router.replace("/produits") // Redirect regular users to products page
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue lors de la connexion.")
     } finally {

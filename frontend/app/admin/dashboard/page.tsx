@@ -4,33 +4,55 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getProducts, getUsers, getCommandes, getCommandesByEtat } from '@/lib/data'
 
 interface AdminData {
   id: number
-  name: string
+  nom: string
+  prenom: string
   email: string
+  role: string
 }
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [adminData, setAdminData] = useState<AdminData | null>(null)
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    pendingOrders: 0,
+    totalUsers: 0
+  })
 
   useEffect(() => {
     // Check if user is logged in and is an admin
-    const userType = localStorage.getItem('userType')
     const userData = localStorage.getItem('user')
-
-    if (!userData || userType !== 'admin') {
+    if (!userData) {
       router.push('/connexion')
       return
     }
 
-    setAdminData(JSON.parse(userData))
+    const user = JSON.parse(userData)
+    if (user.role !== 'admin') {
+      router.push('/connexion')
+      return
+    }
+
+    setAdminData(user)
+
+    // Load stats
+    const products = getProducts()
+    const users = getUsers()
+    const pendingOrders = getCommandesByEtat('en attente')
+
+    setStats({
+      totalProducts: products.length,
+      pendingOrders: pendingOrders.length,
+      totalUsers: users.length
+    })
   }, [router])
 
   const handleLogout = () => {
     localStorage.removeItem('user')
-    localStorage.removeItem('userType')
     router.push('/connexion')
   }
 
@@ -39,93 +61,98 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
       <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Tableau de bord administrateur</h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700"
-            >
-              Déconnexion
-            </button>
+            <h1 className="text-2xl font-bold text-gray-800">Tableau de bord administrateur</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600">
+                Bienvenue, {adminData.prenom} {adminData.nom}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-red-600 hover:text-red-700 font-medium"
+              >
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Products Management Card */}
+          {/* Products Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Gestion des produits</h2>
-            <div className="space-y-4">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Gestion des Produits</h2>
+              <p className="text-gray-600 mb-6">
+                Gérez votre catalogue de produits, ajoutez de nouveaux articles et mettez à jour les informations existantes.
+              </p>
               <Link
                 href="/admin/products"
-                className="block w-full px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                className="inline-flex items-center text-primary hover:text-primary-dark"
               >
                 Voir tous les produits
-              </Link>
-              <Link
-                href="/admin/products/new"
-                className="block w-full px-4 py-2 text-sm font-medium text-primary border border-primary hover:bg-primary/5 rounded-lg transition-colors"
-              >
-                Ajouter un produit
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
           </motion.div>
 
-          {/* Orders Management Card */}
+          {/* Orders Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Gestion des commandes</h2>
-            <div className="space-y-4">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Gestion des Commandes</h2>
+              <p className="text-gray-600 mb-6">
+                Suivez et gérez les commandes de vos clients, mettez à jour leur statut et consultez les détails.
+              </p>
               <Link
                 href="/admin/orders"
-                className="block w-full px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                className="inline-flex items-center text-primary hover:text-primary-dark"
               >
                 Voir toutes les commandes
-              </Link>
-              <Link
-                href="/admin/orders/pending"
-                className="block w-full px-4 py-2 text-sm font-medium text-primary border border-primary hover:bg-primary/5 rounded-lg transition-colors"
-              >
-                Commandes en attente
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
           </motion.div>
 
-          {/* Users Management Card */}
+          {/* Users Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Gestion des utilisateurs</h2>
-            <div className="space-y-4">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Utilisateurs</h2>
+              <p className="text-gray-600 mb-6">
+                Gérez les comptes utilisateurs, leurs permissions et leurs informations.
+              </p>
               <Link
                 href="/admin/users"
-                className="block w-full px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                className="inline-flex items-center text-primary hover:text-primary-dark"
               >
-                Voir tous les utilisateurs
-              </Link>
-              <Link
-                href="/admin/users/new"
-                className="block w-full px-4 py-2 text-sm font-medium text-primary border border-primary hover:bg-primary/5 rounded-lg transition-colors"
-              >
-                Ajouter un utilisateur
+                Voir les utilisateurs
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
           </motion.div>
@@ -140,15 +167,15 @@ export default function AdminDashboard() {
         >
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500">Total des produits</h3>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">0</p>
+            <p className="mt-2 text-3xl font-semibold text-gray-900">{stats.totalProducts}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500">Commandes en attente</h3>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">0</p>
+            <p className="mt-2 text-3xl font-semibold text-gray-900">{stats.pendingOrders}</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500">Total des utilisateurs</h3>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">0</p>
+            <p className="mt-2 text-3xl font-semibold text-gray-900">{stats.totalUsers}</p>
           </div>
         </motion.div>
       </main>
