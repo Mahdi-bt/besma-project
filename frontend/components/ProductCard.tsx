@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ShoppingCart, X, Info } from "lucide-react"
 import { addToCart } from "@/lib/cart"
 import type { Product } from "@/lib/types"
+import { useRouter } from "next/navigation"
 
 interface ProductCardProps {
   product: Product
@@ -12,8 +13,14 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const router = useRouter()
 
   const handleAddToCart = () => {
+    const userData = localStorage.getItem('user')
+    if (!userData) {
+      router.push('/connexion')
+      return
+    }
     addToCart(product)
     // You might want to show a success message
   }
