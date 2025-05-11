@@ -11,22 +11,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../../config/database.php';
-include_once '../../models/Product.php';
 
 $database = new Database();
 $db = $database->getConnection();
 
-$categorie_id = isset($_GET['categorie_id']) ? intval($_GET['categorie_id']) : null;
-
-if ($categorie_id) {
-    $stmt = $db->prepare("SELECT * FROM produit WHERE categorie_id = :cat");
-    $stmt->execute([':cat' => $categorie_id]);
-} else {
-    $stmt = $db->prepare("SELECT * FROM produit");
-    $stmt->execute();
-}
-
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt = $db->prepare("SELECT id_categorie, nom_categorie FROM categorie ORDER BY nom_categorie ASC");
+$stmt->execute();
+$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 http_response_code(200);
-echo json_encode(["products" => $products]); 
+echo json_encode(["categories" => $categories]); 
