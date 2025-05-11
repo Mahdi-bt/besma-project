@@ -397,6 +397,131 @@
           }
         }
       ]
+    },
+    {
+      "name": "Contact",
+      "item": [
+        {
+          "name": "Submit Contact Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"subject\": \"Question about products\",\n  \"message\": \"Hello, I have a question about your products...\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/contact/submit.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "contact", "submit.php"]
+            }
+          }
+        },
+        {
+          "name": "Read Contact Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": {
+              "raw": "http://localhost:8000/api/contact/read.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "contact", "read.php"]
+            }
+          }
+        },
+        {
+          "name": "Update Message Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"status\": \"read\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/contact/update_status.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "contact", "update_status.php"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rendez-vous",
+      "item": [
+        {
+          "name": "Create Rendez-vous",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date_rdv\": \"2024-04-15\",\n  \"heure_rdv\": \"14:30\",\n  \"type_rdv\": \"Consultation\",\n  \"description\": \"Consultation initiale\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/rendez-vous/create.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "rendez-vous", "create.php"]
+            }
+          }
+        },
+        {
+          "name": "Read Rendez-vous",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": {
+              "raw": "http://localhost:8000/api/rendez-vous/read.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "rendez-vous", "read.php"]
+            }
+          }
+        },
+        {
+          "name": "Update Rendez-vous Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"status\": \"confirme\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/rendez-vous/update_status.php",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "rendez-vous", "update_status.php"]
+            }
+          }
+        }
+      ]
     }
   ]
 } 
