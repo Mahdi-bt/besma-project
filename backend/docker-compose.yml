@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=bessma_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
+    volumes:
+      - .:/var/www/html
+    command: ["/bin/bash", "/var/www/html/docker-entrypoint.sh"]
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=bessma_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data: 

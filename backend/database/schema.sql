@@ -51,30 +51,33 @@ CREATE TABLE commande (
     id_user INTEGER REFERENCES users(id)
 );
 
--- Table VETEMENT (hérite de PRODUIT)
-CREATE TABLE vetement (
-    id_prod INTEGER PRIMARY KEY REFERENCES produit(id_prod) ON DELETE CASCADE,
-    taille VARCHAR(20) NOT NULL,
-    type VARCHAR(50) NOT NULL
-);
-
--- Table PRODUITNOURRITURES (hérite de PRODUIT)
-CREATE TABLE produitnourritures (
-    id_prod INTEGER PRIMARY KEY REFERENCES produit(id_prod) ON DELETE CASCADE,
-    date_expiration DATE NOT NULL
-);
-
--- Table SEANCESOUTIEN (hérite de PRODUIT)
-CREATE TABLE seancesoutien (
-    id_prod INTEGER PRIMARY KEY REFERENCES produit(id_prod) ON DELETE CASCADE,
-    heure INTEGER NOT NULL,
-    specialiste VARCHAR(100) NOT NULL,
-    date DATE NOT NULL
-);
-
 -- Table PRODUCT_IMAGES (for multiple images per product)
 CREATE TABLE product_images (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES produit(id_prod) ON DELETE CASCADE,
     image_path VARCHAR(255) NOT NULL
+);
+
+-- Table CONTACT_MESSAGES
+CREATE TABLE contact_messages (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    subject VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied'))
+);
+
+-- Table RENDEZ_VOUS
+CREATE TABLE rendez_vous (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    date_rdv DATE NOT NULL,
+    heure_rdv TIME NOT NULL,
+    type_rdv VARCHAR(50) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'en_attente' CHECK (status IN ('en_attente', 'confirme', 'annule')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
