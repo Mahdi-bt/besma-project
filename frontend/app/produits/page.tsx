@@ -87,15 +87,7 @@ export default function Produits() {
               </Link>
             </motion.div>
 
-            <motion.div variants={itemVariants}>
-              <Link
-                href="/produits/commande"
-                className="group relative bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-full shadow-md hover:shadow-xl transition-all duration-300 inline-flex items-center"
-              >
-                <span className="relative z-10">Passer une commande</span>
-                <div className="absolute inset-0 bg-white/10 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              </Link>
-            </motion.div>
+            
           </motion.div>
 
           {/* Products Grid */}

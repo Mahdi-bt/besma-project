@@ -33,6 +33,16 @@ export interface Commande {
     quantite: number
   }[]
   total: number
+  livraison: {
+    nom: string
+    prenom: string
+    email: string
+    telephone: string
+    adresse: string
+    ville: string
+    codePostal: string
+    pays: string
+  }
 }
 
 export interface User {
@@ -44,4 +54,15 @@ export interface User {
   prenom: string
   createdAt: string
   lastLogin?: string
+}
+export interface RendezVous {
+  id: number
+  date: string
+  heure: string
+  clientId: number
+  specialiste: string
+  type: "consultation" | "suivi" | "urgence"
+  etat: "en attente" | "confirmé" | "annulé" | "terminé"
+  notes?: string
+  duree: number // in minutes
 }

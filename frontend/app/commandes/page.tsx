@@ -161,31 +161,83 @@ export default function UserOrders() {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {selectedOrder.productDetails.map((product, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium">{product.name}</h3>
-                      <p className="text-gray-600">
-                        {product.price.toFixed(2)} € x {selectedOrder.produits[index].quantite}
-                      </p>
-                    </div>
-                    <div className="font-bold">
-                      {(product.price * selectedOrder.produits[index].quantite).toFixed(2)} €
-                    </div>
+              {/* Order Status Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">État de la commande</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrder.etat)}`}>
+                      {selectedOrder.etat}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {selectedOrder.etat === 'en attente' && 'Votre commande est en cours de traitement'}
+                      {selectedOrder.etat === 'en cours' && 'Votre commande est en cours de préparation'}
+                      {selectedOrder.etat === 'livrée' && 'Votre commande a été livrée'}
+                      {selectedOrder.etat === 'annulée' && 'Votre commande a été annulée'}
+                    </p>
                   </div>
-                ))}
+                </div>
               </div>
 
-              <div className="border-t mt-6 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-medium">Total</span>
-                  <span className="text-2xl font-bold">{selectedOrder.total.toFixed(2)} €</span>
+              {/* Products Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Produits commandés</h3>
+                <div className="space-y-4">
+                  {selectedOrder.productDetails.map((product, index) => (
+                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{product.name}</h3>
+                        <p className="text-gray-600">
+                          {product.price.toFixed(2)} € x {selectedOrder.produits[index].quantite}
+                        </p>
+                      </div>
+                      <div className="font-bold">
+                        {(product.price * selectedOrder.produits[index].quantite).toFixed(2)} €
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Summary Section */}
+              <div className="border-t pt-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Sous-total</span>
+                    <span className="font-medium">{selectedOrder.total.toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Frais de livraison</span>
+                    <span className="font-medium">Gratuit</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-lg font-medium">Total</span>
+                    <span className="text-2xl font-bold">{selectedOrder.total.toFixed(2)} €</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Informations supplémentaires</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Numéro de commande</span>
+                    <span className="font-medium">#{selectedOrder.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Date de commande</span>
+                    <span className="font-medium">{formatDate(selectedOrder.date)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Méthode de paiement</span>
+                    <span className="font-medium">Carte bancaire</span>
+                  </div>
                 </div>
               </div>
             </div>
