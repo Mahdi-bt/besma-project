@@ -1,21 +1,20 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Table CLIENT
-CREATE TABLE client (
-    id_clt SERIAL PRIMARY KEY,
-    nom_clt VARCHAR(100) NOT NULL,
-    adresse_email_clt VARCHAR(100) UNIQUE NOT NULL,
-    tel_clt VARCHAR(20) NOT NULL,
-    password VARCHAR(255) NOT NULL
+-- Table USERS (unified for clients and admins)
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    tel VARCHAR(20),
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'client'
 );
 
--- Table ADMINISTRATEUR
-CREATE TABLE administrateur (
-    id_admin SERIAL PRIMARY KEY,
-    nom_admin VARCHAR(100) NOT NULL,
-    adresse_email_admin VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
+-- Table CATEGORIE
+CREATE TABLE categorie (
+    id_categorie SERIAL PRIMARY KEY,
+    nom_categorie VARCHAR(100) NOT NULL
 );
 
 -- Table PRODUIT
@@ -24,7 +23,8 @@ CREATE TABLE produit (
     nom_prod VARCHAR(100) NOT NULL,
     qte_prod INTEGER NOT NULL,
     prix_prod DECIMAL(10,2) NOT NULL,
-    description_prod TEXT
+    description_prod TEXT,
+    categorie_id INTEGER REFERENCES categorie(id_categorie) ON DELETE SET NULL
 );
 
 -- Table PANIER
@@ -48,7 +48,7 @@ CREATE TABLE commande (
     date_cmd TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     etat_cmd VARCHAR(50) NOT NULL,
     id_panier INTEGER REFERENCES panier(id_panier),
-    id_clt INTEGER REFERENCES client(id_clt)
+    id_user INTEGER REFERENCES users(id)
 );
 
 -- Table VETEMENT (hérite de PRODUIT)
@@ -72,11 +72,9 @@ CREATE TABLE seancesoutien (
     date DATE NOT NULL
 );
 
--- Insert default administrator account
--- Password is 'admin123' hashed with bcrypt
-INSERT INTO administrateur (nom_admin, adresse_email_admin, password)
-VALUES (
-    'Administrateur',
-    'admin@bessma.com',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'
-); 
+-- Table PRODUCT_IMAGES (for multiple images per product)
+CREATE TABLE product_images (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES produit(id_prod) ON DELETE CASCADE,
+    image_path VARCHAR(255) NOT NULL
+);

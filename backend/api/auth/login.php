@@ -9,36 +9,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+header("Content-Type: application/json; charset=UTF-8");
 include_once '../../config/database.php';
-include_once '../../models/Client.php';
+require_once '../../vendor/autoload.php';
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+$jwt_secret = 'your_jwt_secret_key'; // Change this to a secure value in production
 
 $database = new Database();
 $db = $database->getConnection();
 
-$client = new Client($db);
-
 $data = json_decode(file_get_contents("php://input"));
 
-if(!empty($data->email) && !empty($data->password)) {
-    $client->adresse_email_clt = $data->email;
-    $client->password = $data->password;
-
-    if($client->login()) {
+if (!empty($data->email) && !empty($data->password)) {
+    $stmt = $db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
+    $stmt->bindParam(":email", $data->email);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($user && password_verify($data->password, $user['password'])) {
+        $payload = [
+            'id' => $user['id'],
+            'email' => $user['email'],
+            'role' => $user['role'],
+            'exp' => time() + 60*60*24 // 24 hours
+        ];
+        $jwt = JWT::encode($payload, $jwt_secret, 'HS256');
         http_response_code(200);
-        echo json_encode(array(
+        echo json_encode([
             "message" => "Connexion réussie.",
-            "user" => array(
-                "id" => $client->id_clt,
-                "nom" => $client->nom_clt,
-                "email" => $client->adresse_email_clt,
-                "telephone" => $client->tel_clt
-            )
-        ));
+            "token" => $jwt,
+            "user" => [
+                "id" => $user['id'],
+                "nom" => $user['nom'],
+                "email" => $user['email'],
+                "tel" => $user['tel'],
+                "role" => $user['role']
+            ]
+        ]);
     } else {
         http_response_code(401);
-        echo json_encode(array("message" => "Email ou mot de passe incorrect."));
+        echo json_encode(["message" => "Email ou mot de passe incorrect."]);
     }
 } else {
     http_response_code(400);
-    echo json_encode(array("message" => "Données incomplètes."));
+    echo json_encode(["message" => "Données incomplètes."]);
 } 
