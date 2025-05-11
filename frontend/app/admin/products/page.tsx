@@ -59,11 +59,15 @@ export default function ProductsPage() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     
+    // Get the file from the file input
+    const imageFile = formData.get('image') as File
+    const imageUrl = imageFile ? URL.createObjectURL(imageFile) : ''
+    
     const newProduct = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: parseFloat(formData.get('price') as string),
-      image: formData.get('image') as string,
+      image: imageUrl,
       category: formData.get('category') as "vetement" | "nourriture" | "seance",
       stock: parseInt(formData.get('stock') as string),
       details: {
@@ -83,11 +87,15 @@ export default function ProductsPage() {
 
     const formData = new FormData(e.currentTarget)
     
+    // Get the file from the file input
+    const imageFile = formData.get('image') as File
+    const imageUrl = imageFile ? URL.createObjectURL(imageFile) : selectedProduct.image
+    
     const updatedProduct = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: parseFloat(formData.get('price') as string),
-      image: formData.get('image') as string,
+      image: imageUrl,
       category: formData.get('category') as "vetement" | "nourriture" | "seance",
       stock: parseInt(formData.get('stock') as string),
       details: {
@@ -308,14 +316,28 @@ export default function ProductsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                    <label className="block text-sm font-medium text-gray-700">Image</label>
                     <input
-                      type="text"
+                      type="file"
                       name="image"
-                      defaultValue={selectedProduct.image}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                      required
+                      accept="image/*"
+                      className="mt-1 block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-primary file:text-white
+                        hover:file:bg-primary-dark"
                     />
+                    {selectedProduct.image && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-500">Image actuelle:</p>
+                        <img 
+                          src={selectedProduct.image} 
+                          alt={selectedProduct.name}
+                          className="mt-1 h-20 w-20 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Taille</label>
@@ -429,12 +451,17 @@ export default function ProductsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                    <label className="block text-sm font-medium text-gray-700">Image</label>
                     <input
-                      type="text"
+                      type="file"
                       name="image"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                      required
+                      accept="image/*"
+                      className="mt-1 block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-primary file:text-white
+                        hover:file:bg-primary-dark"
                     />
                   </div>
                   <div>

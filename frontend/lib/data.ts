@@ -1,4 +1,4 @@
-import type { Product, User, Commande } from "./types"
+import type { Product, User, Commande,RendezVous } from "./types"
 
 const products: Product[] = [
   {
@@ -123,7 +123,17 @@ const commandes: Commande[] = [
       { produitId: 1, quantite: 2 },
       { produitId: 3, quantite: 1 }
     ],
-    total: 69.97
+    total: 69.97,
+    livraison: {
+      nom: "Dupont",
+      prenom: "Jean",
+      email: "jean.dupont@example.com",
+      telephone: "0612345678",
+      adresse: "123 Rue de la Paix",
+      ville: "Paris",
+      codePostal: "75001",
+      pays: "France"
+    }
   },
   {
     id: 2,
@@ -134,7 +144,17 @@ const commandes: Commande[] = [
       { produitId: 2, quantite: 1 },
       { produitId: 4, quantite: 3 }
     ],
-    total: 129.96
+    total: 129.96,
+    livraison: {
+      nom: "Martin",
+      prenom: "Marie",
+      email: "marie.martin@example.com",
+      telephone: "0623456789",
+      adresse: "456 Avenue des Champs-Élysées",
+      ville: "Paris",
+      codePostal: "75008",
+      pays: "France"
+    }
   },
   {
     id: 3,
@@ -145,7 +165,17 @@ const commandes: Commande[] = [
       { produitId: 5, quantite: 2 },
       { produitId: 6, quantite: 1 }
     ],
-    total: 71.98
+    total: 71.98,
+    livraison: {
+      nom: "Dupont",
+      prenom: "Jean",
+      email: "jean.dupont@example.com",
+      telephone: "0612345678",
+      adresse: "123 Rue de la Paix",
+      ville: "Paris",
+      codePostal: "75001",
+      pays: "France"
+    }
   }
 ]
 
@@ -282,5 +312,95 @@ export function deleteCommande(id: number): boolean {
   localStorage.setItem('commandes', JSON.stringify(updatedCommandes))
   return true
 }
+const rendezVous: RendezVous[] = [
+  {
+    id: 1,
+    date: "2024-03-25",
+    heure: "14:30",
+    clientId: 2,
+    specialiste: "Dr. Martin",
+    type: "consultation",
+    etat: "confirmé",
+    notes: "Première consultation pour évaluation",
+    duree: 60
+  },
+  {
+    id: 2,
+    date: "2024-03-26",
+    heure: "10:00",
+    clientId: 3,
+    specialiste: "Dr. Dubois",
+    type: "suivi",
+    etat: "en attente",
+    notes: "Suivi mensuel",
+    duree: 45
+  },
+  {
+    id: 3,
+    date: "2024-03-27",
+    heure: "16:00",
+    clientId: 2,
+    specialiste: "Dr. Martin",
+    type: "urgence",
+    etat: "confirmé",
+    notes: "Consultation urgente",
+    duree: 30
+  }
+]
 
-export type { Product }
+// RendezVous CRUD operations
+export function getRendezVous(): RendezVous[] {
+  const storedRendezVous = localStorage.getItem('rendezVous')
+  if (storedRendezVous) {
+    return JSON.parse(storedRendezVous)
+  }
+  localStorage.setItem('rendezVous', JSON.stringify(rendezVous))
+  return rendezVous
+}
+
+export function getRendezVousById(id: number): RendezVous | undefined {
+  return getRendezVous().find((rdv) => rdv.id === id)
+}
+
+export function getRendezVousByClient(clientId: number): RendezVous[] {
+  return getRendezVous().filter((rdv) => rdv.clientId === clientId)
+}
+
+export function getRendezVousByEtat(etat: "en attente" | "confirmé" | "annulé" | "terminé"): RendezVous[] {
+  return getRendezVous().filter((rdv) => rdv.etat === etat)
+}
+
+export function addRendezVous(rendezVous: Omit<RendezVous, 'id'>): RendezVous {
+  const rendezVousList = getRendezVous()
+  const newRendezVous: RendezVous = {
+    ...rendezVous,
+    id: rendezVousList.length > 0 ? Math.max(...rendezVousList.map(r => r.id)) + 1 : 1
+  }
+  const updatedRendezVous = [...rendezVousList, newRendezVous]
+  localStorage.setItem('rendezVous', JSON.stringify(updatedRendezVous))
+  return newRendezVous
+}
+
+export function updateRendezVous(id: number, updatedRendezVous: Partial<RendezVous>): RendezVous | null {
+  const rendezVousList = getRendezVous()
+  const index = rendezVousList.findIndex(r => r.id === id)
+  
+  if (index === -1) return null
+  
+  const updatedRendezVousList = [...rendezVousList]
+  updatedRendezVousList[index] = { ...updatedRendezVousList[index], ...updatedRendezVous }
+  localStorage.setItem('rendezVous', JSON.stringify(updatedRendezVousList))
+  return updatedRendezVousList[index]
+}
+
+export function deleteRendezVous(id: number): boolean {
+  const rendezVousList = getRendezVous()
+  const updatedRendezVous = rendezVousList.filter(r => r.id !== id)
+  
+  if (updatedRendezVous.length === rendezVousList.length) return false
+  
+  localStorage.setItem('rendezVous', JSON.stringify(updatedRendezVous))
+  return true
+}
+
+export type { Product, User, Commande, RendezVous }

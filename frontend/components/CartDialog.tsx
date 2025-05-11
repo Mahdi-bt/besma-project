@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Plus, Minus, Trash2 } from "lucide-react"
-import { getCart, removeFromCart, updateCartItemQuantity, getCartTotal, clearCart } from "@/lib/cart"
-import { addCommande } from "@/lib/data"
+import { getCart, removeFromCart, updateCartItemQuantity, getCartTotal } from "@/lib/cart"
+import { useRouter } from "next/navigation"
 import type { CartItem } from "@/lib/cart"
 
 interface CartDialogProps {
@@ -13,6 +13,7 @@ interface CartDialogProps {
 }
 
 export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
+  const router = useRouter()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -34,35 +35,17 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
     setCartItems(updatedCart)
   }
 
-  const handleCheckout = async () => {
-    setIsSubmitting(true)
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
-      if (!user.id) {
-        throw new Error('User not logged in')
-      }
-
-      const newCommande = {
-        date: new Date().toISOString(),
-        etat: "en attente",
-        clientId: user.id,
-        produits: cartItems.map(item => ({
-          produitId: item.product.id,
-          quantite: item.quantity
-        })),
-        total: getCartTotal()
-      }
-
-      await addCommande(newCommande)
-      clearCart()
-      onClose()
-      // You might want to show a success message or redirect
-    } catch (error) {
-      console.error('Checkout failed:', error)
-      // Handle error (show error message)
-    } finally {
-      setIsSubmitting(false)
+  const handleCheckout = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!user.id) {
+      // Redirect to login if user is not logged in
+      router.push('/connexion')
+      return
     }
+
+    // Close the cart dialog and redirect to commande page
+    onClose()
+    router.push('/produits/commande')
   }
 
   return (
@@ -152,7 +135,7 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
                       disabled={isSubmitting}
                       className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? "Traitement..." : "Valider la commande"}
+                      {isSubmitting ? "Traitement..." : "Passer la commande"}
                     </button>
                   </div>
                 </>
