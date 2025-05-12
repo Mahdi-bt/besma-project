@@ -77,6 +77,12 @@ export default function AdminDashboard() {
       icon: '📅',
       color: 'bg-pink-500',
       link: '/admin/rendez-vous'
+    },{
+      title: 'Messages',
+      value: 0,
+      icon: '📅',
+      color: 'bg-pink-500',
+      link: '/admin/contact'
     }
   ]
 

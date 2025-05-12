@@ -38,14 +38,24 @@ export async function getProduct(id: number): Promise<Product> {
 }
 
 export async function createProduct(product: Omit<Product, 'id' | 'images'>): Promise<Product> {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${API_URL}/products/create.php`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+      'Authorization': token
     },
-    body: JSON.stringify(product)
+    body: JSON.stringify(product),
+    credentials: 'include'
   });
+
+  if (response.status === 401) {
+    throw new Error('Session expired. Please login again.');
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -66,21 +76,31 @@ export async function createProduct(product: Omit<Product, 'id' | 'images'>): Pr
     prix_prod: data.prix_prod,
     qte_prod: data.qte_prod,
     categorie_id: data.categorie_id,
-    images: data.images || [], // Use images if provided, otherwise empty array
-    features: data.features || {} // Use features if provided, otherwise empty object
+    images: data.images || [],
+    features: data.features || {}
   };
 }
 
 export async function updateProduct(id: number, product: Partial<Product>): Promise<Product> {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${API_URL}/products/update.php`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+      'Authorization': token
     },
-    body: JSON.stringify({ id_prod: id, ...product })
-  })
+    body: JSON.stringify({ id_prod: id, ...product }),
+    credentials: 'include'
+  });
   
+  if (response.status === 401) {
+    throw new Error('Session expired. Please login again.');
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Update product error:', errorText);
@@ -101,16 +121,27 @@ export async function updateProduct(id: number, product: Partial<Product>): Prom
 }
 
 export async function deleteProduct(id: number): Promise<boolean> {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${API_URL}/products/delete.php?id=${id}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
-    }
-  })
-  if (!response.ok) {
-    throw new Error('Failed to delete product')
+      'Authorization': token
+    },
+    credentials: 'include'
+  });
+  
+  if (response.status === 401) {
+    throw new Error('Session expired. Please login again.');
   }
-  return true
+
+  if (!response.ok) {
+    throw new Error('Failed to delete product');
+  }
+  return true;
 }
 
 export async function uploadProductImage(productId: number, imageFile: File | File[]): Promise<string[]> {
@@ -493,4 +524,87 @@ export async function getCommandesByClient(clientId: number): Promise<Order[]> {
 
   const data = await response.json()
   return data.orders || []
+}
+
+// Contact API functions
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'unread' | 'read' | 'replied';
+  created_at: string;
+}
+
+export async function submitContactMessage(message: Omit<ContactMessage, 'id' | 'status' | 'created_at'>): Promise<{ message: string }> {
+  const token = localStorage.getItem('jwt_token');
+  const response = await fetch(`${API_URL}/contact/submit.php`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(message)
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to submit message' }));
+    throw new Error(error.message);
+  }
+
+  return response.json();
+}
+
+export async function getContactMessages(): Promise<ContactMessage[]> {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/contact/read.php`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401) {
+    throw new Error('Session expired. Please login again.');
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch messages' }));
+    throw new Error(error.message);
+  }
+
+  const data = await response.json();
+  return data.records || [];
+}
+
+export async function updateMessageStatus(id: number, status: ContactMessage['status']): Promise<{ message: string }> {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(`${API_URL}/contact/update_status.php`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ id, status }),
+   
+  });
+
+  if (response.status === 401) {
+    throw new Error('Session expired. Please login again.');
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to update message status' }));
+    throw new Error(error.message);
+  }
+
+  return response.json();
 }
