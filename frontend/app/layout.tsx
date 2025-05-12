@@ -4,6 +4,7 @@ import { Crete_Round } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
+import { AuthProvider } from '../context/AuthContext'
 
 const creteRound = Crete_Round({
   weight: "400",
@@ -25,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={creteRound.className}>
-        <Header />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <Header />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

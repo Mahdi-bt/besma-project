@@ -17,6 +17,10 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Get user and role
+  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+  const role = user?.role;
+
   useEffect(() => {
     if (isOpen) {
       setCartItems(getCart())
@@ -36,17 +40,17 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
   }
 
   const handleCheckout = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (!user.id) {
-      // Redirect to login if user is not logged in
-      router.push('/connexion')
-      return
+    if (role === "admin") {
+      alert("Les administrateurs ne peuvent pas passer de commande.");
+      return;
     }
-
-    // Close the cart dialog and redirect to commande page
-    onClose()
-    router.push('/produits/commande')
-  }
+    if (!user.id) {
+      router.push('/connexion');
+      return;
+    }
+    onClose();
+    router.push('/produits/commande');
+  };
 
   return (
     <AnimatePresence>
@@ -79,7 +83,11 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
                 </button>
               </div>
 
-              {cartItems.length === 0 ? (
+              {role === "admin" ? (
+                <div className="text-center text-red-500 font-bold py-8">
+                  Les administrateurs ne peuvent pas passer de commande.
+                </div>
+              ) : cartItems.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">Votre panier est vide</p>
               ) : (
                 <>

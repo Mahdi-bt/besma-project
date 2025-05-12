@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import ConnexionForm from "../../components/ConnexionForm"
+import LoginForm from "@/components/LoginForm"
 
 export default function Connexion() {
   return (
@@ -35,7 +35,7 @@ export default function Connexion() {
               transition={{ delay: 0.3 }}
               className="text-lg text-gray-600 leading-relaxed mb-8"
             >
-              Connectez-vous pour accéder à votre espace personnel.
+              Connectez-vous à votre compte pour accéder à tous nos services.
             </motion.p>
             <motion.div
               initial={{ opacity: 0 }}
@@ -63,7 +63,7 @@ export default function Connexion() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="bg-white rounded-2xl shadow-xl p-8"
           >
-            <ConnexionForm />
+            <LoginForm />
           </motion.div>
         </div>
       </section>

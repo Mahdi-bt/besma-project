@@ -3,16 +3,25 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { getUsers, getProducts, getCommandes, getRendezVous } from '@/lib/data'
+import { getUsers, getRendezVous } from '@/lib/data'
 import Link from 'next/link'
+
+interface Stats {
+  users: number
+  products: number
+  orders: number
+  rendezVous: number
+  category: number
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     users: 0,
     products: 0,
     orders: 0,
-    rendezVous: 0
+    rendezVous: 0,
+    category: 0
   })
 
   useEffect(() => {
@@ -30,15 +39,17 @@ export default function AdminDashboard() {
 
     // Load stats
     const users = getUsers()
-    const products = getProducts()
-    const orders = getCommandes()
+    const products = []
+    const orders = []
     const rendezVous = getRendezVous()
+    
 
     setStats({
       users: users.length,
-      products: products.length,
-      orders: orders.length,
-      rendezVous: rendezVous.length
+      products: 0,
+      orders: 0,
+      rendezVous: rendezVous.length,
+      category: 0 // Assuming category is not available in the current data
     })
   }, [router])
 
@@ -63,6 +74,13 @@ export default function AdminDashboard() {
       icon: '🛒',
       color: 'bg-purple-500',
       link: '/admin/orders'
+    },
+    {
+      title: 'Category',
+      value: stats.category,
+      icon: '📁',
+      color: 'bg-purple-500',
+      link: '/admin/categories'
     },
     {
       title: 'Rendez-vous',

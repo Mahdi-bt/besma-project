@@ -2,44 +2,20 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react"
+import { Menu, X, ShoppingCart, User as UserIcon, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import CartDialog from "./CartDialog"
 import { getCartUniqueItemsCount } from "@/lib/cart"
+import { useAuth } from "../context/AuthContext"
+import type { User } from "@/lib/types"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
   const [cartCount, setCartCount] = useState(0)
   const router = useRouter()
-
-  const updateUserState = () => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    } else {
-      setUser(null)
-    }
-  }
-
-  useEffect(() => {
-    // Initial user state
-    updateUserState()
-
-    // Listen for login event
-    const handleLogin = () => {
-      updateUserState()
-    }
-
-    window.addEventListener('userLogin', handleLogin)
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('userLogin', handleLogin)
-    }
-  }, [])
+  const { user, setUser, isAuthenticated } = useAuth()
 
   useEffect(() => {
     // Update cart count when cart changes
@@ -68,7 +44,7 @@ export default function Header() {
   }
 
   const isRegularUser = user && user.role === "user"
-  const isAdmin = user && user.role === "admin"
+  const isAdmin = user && (user.role === "admin" || user.role === "test")
 
   return (
     <>
@@ -124,21 +100,21 @@ export default function Header() {
               )}
 
               {/* User Menu */}
-              {user ? (
+              {isAuthenticated ? (
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-2 hover:text-accent transition-colors"
                   >
-                    <User className="w-6 h-6" />
+                    <UserIcon className="w-6 h-6" />
                   </button>
 
                   {/* User Dropdown Menu */}
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2">
                       <div className="px-4 py-2 border-b border-gray-100">
-                        <p className="text-sm font-medium">{user.nom} {user.prenom}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-sm font-medium">{user!.nom} {user!.prenom}</p>
+                        <p className="text-xs text-gray-500">{user!.email}</p>
                       </div>
                       {isRegularUser ? (
                         <Link
@@ -185,15 +161,15 @@ export default function Header() {
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center space-x-2 hover:text-accent transition-colors"
               >
-                <User className="w-6 h-6" />
+                <UserIcon className="w-6 h-6" />
               </button>
 
               {/* Admin User Dropdown Menu */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium">{user.nom} {user.prenom}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
+                    <p className="text-sm font-medium">{user!.nom} {user!.prenom}</p>
+                    <p className="text-xs text-gray-500">{user!.email}</p>
                   </div>
                   <Link
                     href="/admin/dashboard"
@@ -246,7 +222,7 @@ export default function Header() {
                   Contact
                 </Link>
               </li>
-              {user ? (
+              {isAuthenticated ? (
                 <>
                   {isRegularUser && (
                     <li>

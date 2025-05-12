@@ -1,6 +1,5 @@
 <?php
 require_once '../jwt_utils.php';
-validate_jwt(true);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: DELETE, OPTIONS");
@@ -11,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+validate_jwt(true);
 
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../../config/database.php';

@@ -1,0 +1,21 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# If the request is for an actual file or directory, serve it directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# For authentication endpoints
+RewriteRule ^auth/login\.php$ - [L]
+RewriteRule ^auth/register\.php$ - [L]
+
+# For other API endpoints
+RewriteRule ^products/(.*)$ products/$1 [L]
+RewriteRule ^categories/(.*)$ categories/$1 [L]
+RewriteRule ^orders/(.*)$ orders/$1 [L]
+RewriteRule ^contact/(.*)$ contact/$1 [L]
+RewriteRule ^rendez-vous/(.*)$ rendez-vous/$1 [L]
+
+# Pass all other requests to index.php
+RewriteRule ^ index.php [L]

@@ -11,22 +11,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header("Content-Type: application/json; charset=UTF-8");
 include_once '../../config/database.php';
-include_once '../../models/Product.php';
 
 $database = new Database();
 $db = $database->getConnection();
 
-$categorie_id = isset($_GET['categorie_id']) ? intval($_GET['categorie_id']) : null;
+// Modified query to include images using the correct table name
+$query = "SELECT p.id_prod, p.nom_prod, p.qte_prod, p.prix_prod, p.description_prod, p.categorie_id,
+          COALESCE(json_agg(json_build_object('id', pi.id, 'url', pi.image_path)) FILTER (WHERE pi.id IS NOT NULL), '[]') as images
+          FROM produit p
+          LEFT JOIN product_images pi ON p.id_prod = pi.product_id
+          GROUP BY p.id_prod, p.nom_prod, p.qte_prod, p.prix_prod, p.description_prod, p.categorie_id";
 
-if ($categorie_id) {
-    $stmt = $db->prepare("SELECT * FROM produit WHERE categorie_id = :cat");
-    $stmt->execute([':cat' => $categorie_id]);
-} else {
-    $stmt = $db->prepare("SELECT * FROM produit");
-    $stmt->execute();
+// Check if category filter is provided
+if (isset($_GET['categorie_id'])) {
+    $query .= " WHERE p.categorie_id = :cat_id";
 }
 
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt = $db->prepare($query);
 
-http_response_code(200);
-echo json_encode(["products" => $products]); 
+if (isset($_GET['categorie_id'])) {
+    $stmt->bindParam(":cat_id", $_GET['categorie_id']);
+}
+
+if ($stmt->execute()) {
+    $products = array();
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $product = array(
+            "id" => $row['id_prod'],
+            "nom_prod" => $row['nom_prod'],
+            "description_prod" => $row['description_prod'],
+            "prix_prod" => floatval($row['prix_prod']),
+            "qte_prod" => intval($row['qte_prod']),
+            "categorie_id" => intval($row['categorie_id']),
+            "images" => json_decode($row['images']),
+            "details" => null
+        );
+        array_push($products, $product);
+    }
+    http_response_code(200);
+    echo json_encode(array("products" => $products));
+} else {
+    http_response_code(500);
+    echo json_encode(array("message" => "Erreur lors de la récupération des produits."));
+} 
