@@ -1,85 +1,92 @@
 'use client'
 
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useRouter } from "next/navigation"
-import { getCommandes, updateCommande, deleteCommande, getProductById, getUserById, type Commande } from "@/lib/data"
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import { getCommandesByClient, getOrderDetails } from '@/lib/api'
+import { formatDate } from '@/lib/utils'
 
-export default function OrdersPage() {
+interface Order {
+  id_cmd: number
+  date_cmd: string
+  etat_cmd: string
+  id_panier: number
+  total: number
+  qte: number
+  shipping_nom?: string
+  shipping_prenom?: string
+  shipping_ville?: string
+}
+
+interface OrderWithDetails extends Order {
+  productDetails?: {
+    id_prod: number
+    nom_prod: string
+    prix_prod: number
+    quantite: number
+    image?: string
+  }[]
+}
+
+export default function UserOrders() {
   const router = useRouter()
-  const [commandes, setCommandes] = useState<Commande[]>([])
+  const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [filterEtat, setFilterEtat] = useState<"all" | "en attente" | "confirmée" | "expédiée" | "livrée">("all")
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (!storedUser) {
-      router.push("/connexion")
-      return
-    }
-
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== "admin") {
-      router.push("/connexion")
-      return
-    }
-
-    // Load orders
-    const loadCommandes = () => {
-      const commandesData = getCommandes()
-      setCommandes(commandesData)
+    const fetchOrders = async () => {
+      const userData = localStorage.getItem('user')
+      if (!userData) {
+        router.push('/connexion')
+        return
+      }
+      
+      const user = JSON.parse(userData)
+      
+      try {
+        const userOrders = await getCommandesByClient(user.id)
+        setOrders(userOrders)
+      } catch (error) {
+        console.error('Failed to fetch orders:', error)
+      }
+      
       setIsLoading(false)
     }
 
-    loadCommandes()
+    fetchOrders()
   }, [router])
 
-  const handleOpenModal = (commande: Commande) => {
-    setSelectedCommande(commande)
-    setIsModalOpen(true)
-  }
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setSelectedCommande(null)
-  }
-
-  const handleUpdateEtat = (id: number, newEtat: "en attente" | "confirmée" | "expédiée" | "livrée") => {
-    const updatedCommande = updateCommande(id, { etat: newEtat })
-    if (updatedCommande) {
-      setCommandes(prev => prev.map(c => c.id === id ? updatedCommande : c))
-      handleCloseModal()
+  const handleShowOrderDetails = async (order: OrderWithDetails) => {
+    setIsLoading(true)
+    try {
+      const details = await getOrderDetails(order.id_cmd)
+      setSelectedOrder({ ...order, productDetails: details.products })
+    } catch (error) {
+      console.error('Failed to fetch order details:', error)
+      setSelectedOrder(order)
     }
+    setIsLoading(false)
   }
 
-  const handleDeleteCommande = (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette commande ?')) {
-      const success = deleteCommande(id)
-      if (success) {
-        setCommandes(prev => prev.filter(c => c.id !== id))
-      }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'en attente':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'en cours':
+        return 'bg-blue-100 text-blue-800'
+      case 'livrée':
+        return 'bg-green-100 text-green-800'
+      case 'annulée':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
-  }
-
-  const filteredCommandes = filterEtat === "all" 
-    ? commandes 
-    : commandes.filter(commande => commande.etat === filterEtat)
-
-  const getProductDetails = (produitId: number) => {
-    const product = getProductById(produitId)
-    return product || { name: 'Produit non trouvé', price: 0 }
-  }
-
-  const getUserDetails = (userId: number) => {
-    const user = getUserById(userId)
-    return user || { nom: 'Utilisateur inconnu', prenom: '', email: 'N/A' }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     )
@@ -87,110 +94,57 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Gestion des Commandes</h1>
-            <div className="flex items-center gap-4">
-              <select
-                value={filterEtat}
-                onChange={(e) => setFilterEtat(e.target.value as any)}
-                className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8">Mes commandes</h1>
+
+        {orders.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">Vous n'avez pas encore de commandes.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {orders.map((order) => (
+              <motion.div
+                key={order.id_cmd}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-lg shadow-sm overflow-hidden"
               >
-                <option value="all">Tous les états</option>
-                <option value="en attente">En attente</option>
-                <option value="confirmée">Confirmée</option>
-                <option value="expédiée">Expédiée</option>
-                <option value="livrée">Livrée</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    État
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCommandes.map((commande) => (
-                  <motion.tr
-                    key={commande.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      #{commande.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(commande.date).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                        ${commande.etat === 'en attente' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${commande.etat === 'confirmée' ? 'bg-blue-100 text-blue-800' : ''}
-                        ${commande.etat === 'expédiée' ? 'bg-purple-100 text-purple-800' : ''}
-                        ${commande.etat === 'livrée' ? 'bg-green-100 text-green-800' : ''}
-                      `}>
-                        {commande.etat}
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800">
+                        Commande #{order.id_cmd}
+                      </h2>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(order.date_cmd)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.etat_cmd)}`}>
+                        {order.etat_cmd}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {commande.total.toFixed(2)} €
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleOpenModal(commande)}
-                        className="text-primary hover:text-primary-dark mr-4"
+                        onClick={() => handleShowOrderDetails(order)}
+                        className="text-primary hover:text-primary-dark font-medium"
                       >
-                        Détails
+                        Voir les détails
                       </button>
-                      <button
-                        onClick={() => handleDeleteCommande(commande.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Supprimer
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      </main>
+        )}
 
-      {/* Details Modal */}
-      <AnimatePresence>
-        {isModalOpen && selectedCommande && (
+        {/* Order Details Modal */}
+        {selectedOrder && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -198,148 +152,80 @@ export default function OrdersPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6"
             >
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                Détails de la commande #{selectedCommande.id}
-              </h2>
-
-              <div className="space-y-6">
-                {/* Client Information */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Informations Client</h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    {(() => {
-                      const userDetails = getUserDetails(selectedCommande.clientId)
-                      return (
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Nom</span>
-                            <span className="font-medium">{userDetails.nom} {userDetails.prenom}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Email</span>
-                            <span className="font-medium">{userDetails.email}</span>
-                          </div>
-                        </div>
-                      )
-                    })()}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      Commande #{selectedOrder.id_cmd}
+                    </h2>
+                    <p className="text-gray-500">{formatDate(selectedOrder.date_cmd)}</p>
                   </div>
-                </div>
-
-                {/* Order Information */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Détails de la Commande</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date</span>
-                      <span className="font-medium">
-                        {new Date(selectedCommande.date).toLocaleDateString('fr-FR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">État</span>
-                      <span className={`font-medium px-2 py-1 rounded-full text-sm
-                        ${selectedCommande.etat === 'en attente' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${selectedCommande.etat === 'confirmée' ? 'bg-blue-100 text-blue-800' : ''}
-                        ${selectedCommande.etat === 'expédiée' ? 'bg-purple-100 text-purple-800' : ''}
-                        ${selectedCommande.etat === 'livrée' ? 'bg-green-100 text-green-800' : ''}
-                      `}>
-                        {selectedCommande.etat}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Products List */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Produits</h3>
-                  <div className="space-y-2">
-                    {selectedCommande.produits.map((produit, index) => {
-                      const productDetails = getProductDetails(produit.produitId)
-                      return (
-                        <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <div>
-                            <span className="font-medium">{productDetails.name}</span>
-                            <span className="text-sm text-gray-500 ml-2">x{produit.quantite}</span>
-                          </div>
-                          <span className="text-gray-600">{(productDetails.price * produit.quantite).toFixed(2)} €</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center font-semibold">
-                      <span>Total</span>
-                      <span>{selectedCommande.total.toFixed(2)} €</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Update Section */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Mettre à jour l'état</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleUpdateEtat(selectedCommande.id, "en attente")}
-                      className={`px-4 py-2 rounded-lg ${
-                        selectedCommande.etat === "en attente"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800 hover:bg-yellow-50"
-                      }`}
-                    >
-                      En attente
-                    </button>
-                    <button
-                      onClick={() => handleUpdateEtat(selectedCommande.id, "confirmée")}
-                      className={`px-4 py-2 rounded-lg ${
-                        selectedCommande.etat === "confirmée"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800 hover:bg-blue-50"
-                      }`}
-                    >
-                      Confirmée
-                    </button>
-                    <button
-                      onClick={() => handleUpdateEtat(selectedCommande.id, "expédiée")}
-                      className={`px-4 py-2 rounded-lg ${
-                        selectedCommande.etat === "expédiée"
-                          ? "bg-purple-100 text-purple-800"
-                          : "bg-gray-100 text-gray-800 hover:bg-purple-50"
-                      }`}
-                    >
-                      Expédiée
-                    </button>
-                    <button
-                      onClick={() => handleUpdateEtat(selectedCommande.id, "livrée")}
-                      className={`px-4 py-2 rounded-lg ${
-                        selectedCommande.etat === "livrée"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800 hover:bg-green-50"
-                      }`}
-                    >
-                      Livrée
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
                   <button
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+                    onClick={() => setSelectedOrder(null)}
+                    className="text-gray-500 hover:text-gray-700"
                   >
-                    Fermer
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
+                </div>
+
+                {/* Order Status Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">État de la commande</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrder.etat_cmd)}`}>
+                        {selectedOrder.etat_cmd}
+                      </span>
+                      <p className="text-sm text-gray-600">
+                        {selectedOrder.etat_cmd === 'en attente' && 'Votre commande est en cours de traitement'}
+                        {selectedOrder.etat_cmd === 'en cours' && 'Votre commande est en cours de préparation'}
+                        {selectedOrder.etat_cmd === 'livrée' && 'Votre commande a été livrée'}
+                        {selectedOrder.etat_cmd === 'annulée' && 'Votre commande a été annulée'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Products Section */}
+                {selectedOrder.productDetails && selectedOrder.productDetails.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Produits commandés</h3>
+                    <div className="space-y-4">
+                      {selectedOrder.productDetails.map((product, index) => (
+                        <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <h3 className="font-medium">{product.nom_prod}</h3>
+                            <p className="text-gray-600">
+                              {Number(product.prix_prod).toFixed(2)} € x {product.quantite}
+                            </p>
+                          </div>
+                          <div className="font-bold">
+                            {(Number(product.prix_prod) * product.quantite).toFixed(2)} €
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Summary Section */}
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-600">Sous-total</span>
+                    <span className="font-medium">{Number(selectedOrder.total).toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Total</span>
+                    <span>{Number(selectedOrder.total).toFixed(2)} €</span>
+                  </div>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   )
-} 
+}

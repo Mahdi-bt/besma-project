@@ -15,7 +15,7 @@ header("Content-Type: application/json; charset=UTF-8");
 
 // Validate JWT
 $user = validate_jwt();
-if (!$user || !isset($user['id'])) {
+if (!$user || !isset($user->id)) {
     http_response_code(401);
     echo json_encode(["message" => "Utilisateur non authentifié."]);
     exit();
@@ -93,7 +93,7 @@ try {
 
     // Create commande
     $stmt = $db->prepare("INSERT INTO commande (etat_cmd, id_panier, id_user) VALUES ('en attente', :id_panier, :id_user)");
-    $stmt->execute([':id_panier' => $id_panier, ':id_user' => $user['id']]);
+    $stmt->execute([':id_panier' => $id_panier, ':id_user' => $user->id]);
     $id_cmd = $db->lastInsertId();
     if (!$id_cmd) {
         throw new Exception("La commande n'a pas pu être créée ou l'id_cmd n'a pas été retourné.");

@@ -62,7 +62,7 @@ export default function AdminDashboard() {
       value: stats.orders,
       icon: '🛒',
       color: 'bg-purple-500',
-      link: '/admin/orders'
+      link: '/admin/products/orders'
     },
     {
       title: 'Categories',

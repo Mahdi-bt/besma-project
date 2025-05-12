@@ -20,7 +20,7 @@ $db = $database->getConnection();
 
 try {
     // If admin, get all orders. If regular user, get only their orders
-    if ($user['role'] === 'admin') {
+    if ($user->role === 'admin') {
         $stmt = $db->prepare("
             SELECT 
                 c.id_cmd,
@@ -59,7 +59,7 @@ try {
             WHERE c.id_user = :user_id
             ORDER BY c.date_cmd DESC
         ");
-        $stmt->execute([':user_id' => $user['id']]);
+        $stmt->execute([':user_id' => $user->id]);
     }
 
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -74,4 +74,4 @@ try {
     echo json_encode([
         "message" => "Erreur lors de la récupération des commandes: " . $e->getMessage()
     ]);
-} 
+}

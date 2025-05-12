@@ -45,7 +45,7 @@ try {
     }
 
     // Check if user has permission to view this order
-    if ($user['role'] !== 'admin' && $order['id_user'] !== $user['id']) {
+    if ($user->role !== 'admin' && $order['id_user'] !== $user->id) {
         http_response_code(403);
         echo json_encode(["message" => "Accès non autorisé."]);
         exit();
@@ -62,12 +62,11 @@ try {
             p.id_prod, 
             p.nom_prod, 
             p.prix_prod, 
-            COUNT(*) as quantite,
-            p.images
+            COUNT(*) as quantite
         FROM panier_produit pp 
         JOIN produit p ON pp.id_prod = p.id_prod 
         WHERE pp.id_panier = :id_panier 
-        GROUP BY p.id_prod, p.nom_prod, p.prix_prod, p.images
+        GROUP BY p.id_prod, p.nom_prod, p.prix_prod
     ");
     $stmt->execute([':id_panier' => $order['id_panier']]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -90,4 +89,4 @@ try {
     echo json_encode([
         "message" => "Erreur lors de la récupération des détails de la commande: " . $e->getMessage()
     ]);
-} 
+}

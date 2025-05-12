@@ -3,25 +3,27 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { getCommandesByClient, getProductById } from '@/lib/data'
+import { getCommandesByClient, getOrderDetails } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 
 interface Order {
-  id: number
-  date: string
-  etat: string
+  id_cmd: number
+  date_cmd: string
+  etat_cmd: string
+  id_panier: number
   total: number
-  produits: {
-    produitId: number
-    quantite: number
-  }[]
+  qte: number
+  shipping_nom?: string
+  shipping_prenom?: string
+  shipping_ville?: string
 }
 
 interface OrderWithDetails extends Order {
-  productDetails: {
-    name: string
-    price: number
+  productDetails?: {
+    nom_prod: string
+    prix_prod: number
     image: string
+    quantite?: number
   }[]
 }
 
@@ -32,31 +34,39 @@ export default function UserOrders() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null)
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (!userData) {
-      router.push('/connexion')
-      return
+    const fetchOrders = async () => {
+      const userData = localStorage.getItem('user')
+      if (!userData) {
+        router.push('/connexion')
+        return
+      }
+      
+      const user = JSON.parse(userData)
+      
+      try {
+        const userOrders = await getCommandesByClient(user.id)
+        setOrders(userOrders)
+      } catch (error) {
+        console.error('Failed to fetch orders:', error)
+      }
+      
+      setIsLoading(false)
     }
 
-    const user = JSON.parse(userData)
-    const userOrders = getCommandesByClient(user.id)
-
-    // Enrich orders with product details
-    const ordersWithDetails = userOrders.map(order => ({
-      ...order,
-      productDetails: order.produits.map(item => {
-        const product = getProductById(item.produitId)
-        return {
-          name: product?.name || 'Produit inconnu',
-          price: product?.price || 0,
-          image: product?.image || '/placeholder.png'
-        }
-      })
-    }))
-
-    setOrders(ordersWithDetails)
-    setIsLoading(false)
+    fetchOrders()
   }, [router])
+
+  const handleShowOrderDetails = async (order: OrderWithDetails) => {
+    setIsLoading(true)
+    try {
+      const details = await getOrderDetails(order.id_cmd)
+      setSelectedOrder({ ...order, productDetails: details.products })
+    } catch (error) {
+      setSelectedOrder(order)
+      console.error('Failed to fetch order details:', error)
+    }
+    setIsLoading(false)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -94,7 +104,7 @@ export default function UserOrders() {
           <div className="space-y-6">
             {orders.map((order) => (
               <motion.div
-                key={order.id}
+                key={order.id_cmd}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-lg shadow-sm overflow-hidden"
@@ -103,29 +113,28 @@ export default function UserOrders() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-lg font-semibold text-gray-800">
-                        Commande #{order.id}
+                        Commande #{order.id_cmd}
                       </h2>
                       <p className="text-sm text-gray-500">
-                        {formatDate(order.date)}
+                        {formatDate(order.date_cmd)}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.etat)}`}>
-                        {order.etat}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.etat_cmd)}`}>
+                        {order.etat_cmd}
                       </span>
                       <button
-                        onClick={() => setSelectedOrder(order)}
+                        onClick={() => handleShowOrderDetails(order)}
                         className="text-primary hover:text-primary-dark font-medium"
                       >
                         Voir les détails
                       </button>
                     </div>
                   </div>
-
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Total</span>
-                      <span className="font-bold text-lg">{order.total.toFixed(2)} €</span>
+                      <span className="font-bold text-lg">{Number(order.total).toFixed(2)} €</span>
                     </div>
                   </div>
                 </div>
@@ -147,9 +156,9 @@ export default function UserOrders() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800">
-                    Commande #{selectedOrder.id}
+                    Commande #{selectedOrder.id_cmd}
                   </h2>
-                  <p className="text-gray-500">{formatDate(selectedOrder.date)}</p>
+                  <p className="text-gray-500">{formatDate(selectedOrder.date_cmd)}</p>
                 </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -166,50 +175,46 @@ export default function UserOrders() {
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">État de la commande</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrder.etat)}`}>
-                      {selectedOrder.etat}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedOrder.etat_cmd)}`}>
+                      {selectedOrder.etat_cmd}
                     </span>
                     <p className="text-sm text-gray-600">
-                      {selectedOrder.etat === 'en attente' && 'Votre commande est en cours de traitement'}
-                      {selectedOrder.etat === 'en cours' && 'Votre commande est en cours de préparation'}
-                      {selectedOrder.etat === 'livrée' && 'Votre commande a été livrée'}
-                      {selectedOrder.etat === 'annulée' && 'Votre commande a été annulée'}
+                      {selectedOrder.etat_cmd === 'en attente' && 'Votre commande est en cours de traitement'}
+                      {selectedOrder.etat_cmd === 'en cours' && 'Votre commande est en cours de préparation'}
+                      {selectedOrder.etat_cmd === 'livrée' && 'Votre commande a été livrée'}
+                      {selectedOrder.etat_cmd === 'annulée' && 'Votre commande a été annulée'}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Products Section */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Produits commandés</h3>
-                <div className="space-y-4">
-                  {selectedOrder.productDetails.map((product, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium">{product.name}</h3>
-                        <p className="text-gray-600">
-                          {product.price.toFixed(2)} € x {selectedOrder.produits[index].quantite}
-                        </p>
+              {selectedOrder.productDetails && selectedOrder.productDetails.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Produits commandés</h3>
+                  <div className="space-y-4">
+                    {selectedOrder.productDetails.map((product, index) => (
+                      <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <h3 className="font-medium">{product.nom_prod}</h3>
+                          <p className="text-gray-600">
+                            {Number(product.prix_prod).toFixed(2)} € x {selectedOrder.qte || 1}
+                          </p>
+                        </div>
+                        <div className="font-bold">
+                          {(Number(product.prix_prod) * (selectedOrder.qte || 1)).toFixed(2)} €
+                        </div>
                       </div>
-                      <div className="font-bold">
-                        {(product.price * selectedOrder.produits[index].quantite).toFixed(2)} €
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Order Summary Section */}
               <div className="border-t pt-4">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Sous-total</span>
-                    <span className="font-medium">{selectedOrder.total.toFixed(2)} €</span>
+                    <span className="font-medium">{Number(selectedOrder.total).toFixed(2)} €</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Frais de livraison</span>
@@ -217,7 +222,7 @@ export default function UserOrders() {
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t">
                     <span className="text-lg font-medium">Total</span>
-                    <span className="text-2xl font-bold">{selectedOrder.total.toFixed(2)} €</span>
+                    <span className="text-2xl font-bold">{Number(selectedOrder.total).toFixed(2)} €</span>
                   </div>
                 </div>
               </div>
@@ -228,11 +233,11 @@ export default function UserOrders() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Numéro de commande</span>
-                    <span className="font-medium">#{selectedOrder.id}</span>
+                    <span className="font-medium">#{selectedOrder.id_cmd}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date de commande</span>
-                    <span className="font-medium">{formatDate(selectedOrder.date)}</span>
+                    <span className="font-medium">{formatDate(selectedOrder.date_cmd)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Méthode de paiement</span>
@@ -246,4 +251,4 @@ export default function UserOrders() {
       )}
     </div>
   )
-} 
+}

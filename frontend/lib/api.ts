@@ -480,3 +480,17 @@ export async function getOrderDetails(orderId: number): Promise<OrderDetails> {
 
   return response.json()
 } 
+export async function getCommandesByClient(clientId: number): Promise<Order[]> {
+  const response = await fetch(`${API_URL}/orders/user_orders.php?client_id=${clientId}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch commandes for client')
+  }
+
+  const data = await response.json()
+  return data.orders || []
+}
