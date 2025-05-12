@@ -24,6 +24,7 @@ CREATE TABLE produit (
     qte_prod INTEGER NOT NULL,
     prix_prod DECIMAL(10,2) NOT NULL,
     description_prod TEXT,
+    features JSON,
     categorie_id INTEGER REFERENCES categorie(id_categorie) ON DELETE SET NULL
 );
 
@@ -39,6 +40,7 @@ CREATE TABLE panier (
 CREATE TABLE panier_produit (
     id_panier INTEGER REFERENCES panier(id_panier) ON DELETE CASCADE,
     id_prod INTEGER REFERENCES produit(id_prod) ON DELETE CASCADE,
+    quantite INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (id_panier, id_prod)
 );
 
@@ -80,4 +82,19 @@ CREATE TABLE rendez_vous (
     status VARCHAR(20) DEFAULT 'en_attente' CHECK (status IN ('en_attente', 'confirme', 'annule')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table SHIPPING_INFO
+CREATE TABLE shipping_info (
+    id SERIAL PRIMARY KEY,
+    commande_id INTEGER REFERENCES commande(id_cmd) ON DELETE CASCADE,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    telephone VARCHAR(20) NOT NULL,
+    adresse TEXT NOT NULL,
+    ville VARCHAR(100) NOT NULL,
+    code_postal VARCHAR(10) NOT NULL,
+    pays VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

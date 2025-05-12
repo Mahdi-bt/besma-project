@@ -15,17 +15,25 @@ include_once '../../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Modified query to include images using the correct table name
-$query = "SELECT p.id_prod, p.nom_prod, p.qte_prod, p.prix_prod, p.description_prod, p.categorie_id,
-          COALESCE(json_agg(json_build_object('id', pi.id, 'url', pi.image_path)) FILTER (WHERE pi.id IS NOT NULL), '[]') as images
+// Modified query to handle JSON features column correctly
+$query = "SELECT 
+            p.id_prod, 
+            p.nom_prod, 
+            p.qte_prod, 
+            p.prix_prod, 
+            p.description_prod, 
+            p.categorie_id, 
+            p.features::text as features,
+            COALESCE(json_agg(json_build_object('id', pi.id, 'url', pi.image_path)) FILTER (WHERE pi.id IS NOT NULL), '[]') as images
           FROM produit p
-          LEFT JOIN product_images pi ON p.id_prod = pi.product_id
-          GROUP BY p.id_prod, p.nom_prod, p.qte_prod, p.prix_prod, p.description_prod, p.categorie_id";
+          LEFT JOIN product_images pi ON p.id_prod = pi.product_id";
 
 // Check if category filter is provided
 if (isset($_GET['categorie_id'])) {
     $query .= " WHERE p.categorie_id = :cat_id";
 }
+
+$query .= " GROUP BY p.id_prod";
 
 $stmt = $db->prepare($query);
 
@@ -44,6 +52,7 @@ if ($stmt->execute()) {
             "qte_prod" => intval($row['qte_prod']),
             "categorie_id" => intval($row['categorie_id']),
             "images" => json_decode($row['images']),
+            "features" => $row['features'] ? json_decode($row['features']) : null,
             "details" => null
         );
         array_push($products, $product);

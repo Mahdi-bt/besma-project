@@ -3,55 +3,44 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { getUsers, getRendezVous } from '@/lib/data'
+import { getDashboardStats, type DashboardStats } from '@/lib/api'
 import Link from 'next/link'
-
-interface Stats {
-  users: number
-  products: number
-  orders: number
-  rendezVous: number
-  category: number
-}
+import { useAuth } from '@/context/AuthContext'
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const [stats, setStats] = useState<Stats>({
+  const { user, isAuthenticated } = useAuth()
+  const [stats, setStats] = useState<DashboardStats>({
     users: 0,
     products: 0,
     orders: 0,
     rendezVous: 0,
-    category: 0
+    categories: 0
   })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (!userData) {
-      router.push('/connexion')
-      return
-    }
-
-    const user = JSON.parse(userData)
-    if (user.role !== 'admin') {
+    if (!isAuthenticated || !user || user.role !== 'admin') {
       router.push('/connexion')
       return
     }
 
     // Load stats
-    const users = getUsers()
-    const products = []
-    const orders = []
-    const rendezVous = getRendezVous()
-    
+    const loadStats = async () => {
+      try {
+        const statsData = await getDashboardStats()
+        setStats(statsData)
+      } catch (err) {
+        console.error('Failed to load stats:', err)
+        setError('Failed to load dashboard statistics')
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-    setStats({
-      users: users.length,
-      products: 0,
-      orders: 0,
-      rendezVous: rendezVous.length,
-      category: 0 // Assuming category is not available in the current data
-    })
-  }, [router])
+    loadStats()
+  }, [router, isAuthenticated, user])
 
   const statCards = [
     {
@@ -76,25 +65,39 @@ export default function AdminDashboard() {
       link: '/admin/orders'
     },
     {
-      title: 'Category',
-      value: stats.category,
+      title: 'Categories',
+      value: stats.categories,
       icon: '📁',
-      color: 'bg-purple-500',
+      color: 'bg-yellow-500',
       link: '/admin/categories'
     },
     {
       title: 'Rendez-vous',
       value: stats.rendezVous,
       icon: '📅',
-      color: 'bg-yellow-500',
+      color: 'bg-pink-500',
       link: '/admin/rendez-vous'
     }
   ]
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">Tableau de bord</h1>
+
+        {error && (
+          <div className="mb-8 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((stat, index) => (

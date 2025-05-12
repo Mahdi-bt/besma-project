@@ -33,7 +33,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       >
         <div className="relative">
           <img
-            src={product.image}
+            src={`http://localhost:8000/uploads/products/${product.image}`}
             alt={product.name}
             className="w-full h-48 object-cover"
           />
@@ -84,7 +84,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="relative">
                   <img
-                    src={product.image}
+                    src={`http://localhost:8000/uploads/products/${product.image}`}
                     alt={product.name}
                     className="w-full h-64 object-cover"
                   />

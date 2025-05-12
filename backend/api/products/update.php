@@ -23,7 +23,30 @@ if (
     isset($data->qte_prod) &&
     isset($data->prix_prod)
 ) {
-    $query = "UPDATE produit SET nom_prod = :nom, qte_prod = :qte, prix_prod = :prix, description_prod = :desc, categorie_id = :cat WHERE id_prod = :id";
+    // First, get the current product data to merge features
+    $get_current = "SELECT features FROM produit WHERE id_prod = :id";
+    $stmt_current = $db->prepare($get_current);
+    $stmt_current->bindParam(":id", $data->id_prod);
+    $stmt_current->execute();
+    $current_product = $stmt_current->fetch(PDO::FETCH_ASSOC);
+    
+    // Merge existing features with new ones
+    $current_features = $current_product && $current_product['features'] 
+        ? json_decode($current_product['features'], true) 
+        : [];
+    $new_features = isset($data->features) ? (array)$data->features : [];
+    $merged_features = array_merge($current_features, $new_features);
+
+    $query = "UPDATE produit 
+              SET nom_prod = :nom, 
+                  qte_prod = :qte, 
+                  prix_prod = :prix, 
+                  description_prod = :desc, 
+                  categorie_id = :cat, 
+                  features = :features 
+              WHERE id_prod = :id 
+              RETURNING id_prod, nom_prod, qte_prod, prix_prod, description_prod, categorie_id, features";
+    
     $stmt = $db->prepare($query);
     $stmt->bindParam(":id", $data->id_prod);
     $stmt->bindParam(":nom", $data->nom_prod);
@@ -33,9 +56,31 @@ if (
     $stmt->bindParam(":desc", $desc);
     $cat = isset($data->categorie_id) ? $data->categorie_id : null;
     $stmt->bindParam(":cat", $cat);
+    $features = json_encode($merged_features);
+    $stmt->bindParam(":features", $features);
+    
     if ($stmt->execute()) {
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Get the images for the product
+        $images_query = "SELECT id, image_path as url FROM product_images WHERE product_id = :id";
+        $images_stmt = $db->prepare($images_query);
+        $images_stmt->bindParam(":id", $data->id_prod);
+        $images_stmt->execute();
+        $images = $images_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
         http_response_code(200);
-        echo json_encode(["message" => "Produit mis à jour avec succès."]);
+        echo json_encode([
+            "message" => "Produit mis à jour avec succès.",
+            "id" => intval($row['id_prod']),
+            "nom_prod" => $row['nom_prod'],
+            "description_prod" => $row['description_prod'],
+            "prix_prod" => floatval($row['prix_prod']),
+            "qte_prod" => intval($row['qte_prod']),
+            "categorie_id" => intval($row['categorie_id']),
+            "features" => $row['features'] ? json_decode($row['features']) : null,
+            "images" => $images
+        ]);
     } else {
         http_response_code(500);
         echo json_encode(["message" => "Erreur lors de la mise à jour du produit."]);

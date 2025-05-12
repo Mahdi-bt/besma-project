@@ -3,11 +3,133 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { type Product } from "@/lib/data"
-import { getProducts, createProduct, updateProduct, deleteProduct, uploadProductImage, getCategories, type Category } from "@/lib/api"
+import { getProducts, createProduct, updateProduct, deleteProduct, uploadProductImage, deleteProductImage, getCategories, type Category, type Product } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
+
+// Feature input interface
+interface Feature {
+  name: string;
+  value: string;
+}
+
+// FeatureInput component
+const FeatureInput = ({ 
+  initialFeatures = {}, 
+  onChange 
+}: { 
+  initialFeatures: Record<string, any>,
+  onChange: (features: Record<string, any>) => void 
+}) => {
+  const [features, setFeatures] = useState<Feature[]>(() => {
+    // Convert initial features object to array of name-value pairs
+    return Object.entries(initialFeatures).map(([name, value]) => ({
+      name,
+      value: String(value)
+    }));
+  });
+
+  // Update features when initialFeatures changes
+  useEffect(() => {
+    setFeatures(Object.entries(initialFeatures).map(([name, value]) => ({
+      name,
+      value: String(value)
+    })));
+  }, [initialFeatures]);
+
+  const addFeature = () => {
+    setFeatures([...features, { name: '', value: '' }]);
+  };
+
+  const removeFeature = (index: number) => {
+    const newFeatures = features.filter((_, i) => i !== index);
+    setFeatures(newFeatures);
+    
+    // Convert and trigger onChange
+    const featuresObject = newFeatures.reduce((obj, feature) => {
+      if (feature.name.trim()) {
+        obj[feature.name] = feature.value;
+      }
+      return obj;
+    }, {} as Record<string, any>);
+    
+    onChange(featuresObject);
+  };
+
+  const updateFeature = (index: number, field: 'name' | 'value', value: string) => {
+    const newFeatures = [...features];
+    newFeatures[index][field] = value;
+    setFeatures(newFeatures);
+
+    // Convert features array to object and trigger onChange
+    const featuresObject = newFeatures.reduce((obj, feature) => {
+      if (feature.name.trim()) {
+        obj[feature.name] = feature.value;
+      }
+      return obj;
+    }, {} as Record<string, any>);
+    
+    onChange(featuresObject);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <label className="block text-sm font-medium text-gray-700">Caractéristiques</label>
+        <button
+          type="button"
+          onClick={addFeature}
+          className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+        >
+          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Ajouter
+        </button>
+      </div>
+      
+      <div className="space-y-3">
+        {features.map((feature, index) => (
+          <div key={index} className="flex gap-2 items-start">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Nom"
+                value={feature.name}
+                onChange={(e) => updateFeature(index, 'name', e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Valeur"
+                value={feature.value}
+                onChange={(e) => updateFeature(index, 'value', e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeFeature(index)}
+              className="mt-1 inline-flex items-center p-1.5 border border-transparent rounded-full text-red-600 hover:bg-red-50 focus:outline-none"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ))}
+        {features.length === 0 && (
+          <p className="text-sm text-gray-500 italic">Aucune caractéristique ajoutée</p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function ProductsPage() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -17,6 +139,7 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState<number | "all">("all")
   const [error, setError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isDeletingImage, setIsDeletingImage] = useState(false)
   // Validate image file before uploading
   const validateImageFile = (file: File | null): boolean => {
     // If no file or empty file input (user didn't select a file), return true to proceed without image
@@ -40,16 +163,20 @@ export default function ProductsPage() {
     return true
   }
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (!storedUser) {
-      router.push("/connexion")
-      return
+  const validateFeatures = (jsonString: string): boolean => {
+    try {
+      if (!jsonString.trim()) return true; // Empty is OK
+      JSON.parse(jsonString);
+      return true;
+    } catch (e) {
+      setError('Format JSON invalide pour les caractéristiques');
+      return false;
     }
+  };
 
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== "admin") {
-      router.push("/connexion")
+  useEffect(() => {
+    if (!isAuthenticated || !user || user.role !== 'admin') {
+      router.push('/connexion')
       return
     }
 
@@ -71,7 +198,7 @@ export default function ProductsPage() {
     }
 
     loadData()
-  }, [router])
+  }, [router, isAuthenticated, user])
 
   const handleOpenModal = (product: Product) => {
     console.log(product)
@@ -94,14 +221,16 @@ export default function ProductsPage() {
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
-      try {
+    setIsUploading(true)
+    try {
       const formData = new FormData(e.currentTarget)
       
       // Get the file from the file input
-      const imageFile = formData.get('image') as File
+      const imageFiles = formData.getAll('image') as File[]
       
-      // Only validate if a file was selected
-      if (imageFile && imageFile.size > 0 && !validateImageFile(imageFile)) {
+      // Only validate if files were selected
+      if (imageFiles.length > 0 && !imageFiles.every(file => validateImageFile(file))) {
+        setIsUploading(false)
         return
       }
 
@@ -111,30 +240,28 @@ export default function ProductsPage() {
         prix_prod: parseFloat(formData.get('price') as string),
         qte_prod: parseInt(formData.get('stock') as string),
         categorie_id: parseInt(formData.get('category') as string),
-        details: {
-          taille: formData.get('taille') as string,
-          type: formData.get('type') as string,
-        }
+        features: JSON.parse(formData.get('features-data') as string || '{}')
       }
 
       console.log('Creating new product:', newProduct)
       const addedProduct = await createProduct(newProduct)
       console.log('Product created successfully:', addedProduct)
-        // If there's an image, upload it (check that file exists and has size)
-      if (imageFile && imageFile.size > 0) {
+      
+      // If there are images to upload
+      if (imageFiles.length > 0 && imageFiles[0].size > 0) {
         try {
-          console.log(`Uploading image for new product ${addedProduct.id}, file size: ${imageFile.size} bytes`)
-          const imageFilename = await uploadProductImage(addedProduct.id, imageFile)
-          console.log('Image filename received:', imageFilename)
-          if (imageFilename) {
-            // Initialize images array if it doesn't exist
-            addedProduct.images = addedProduct.images || []
-            addedProduct.images.push({ id: 0, url: imageFilename })
-          }
+          console.log(`Uploading images for new product ${addedProduct.id}, total size: ${imageFiles.reduce((total, file) => total + file.size, 0)} bytes`)
+          const imageFilenames = await uploadProductImage(addedProduct.id, imageFiles)
+          console.log('Image filenames received:', imageFilenames)
+          
+          // Update the product with the new images
+          addedProduct.images = imageFilenames.map((filename, index) => ({
+            id: index,
+            url: filename
+          }))
         } catch (err) {
-          console.error('Failed to upload image:', err)
-          // Don't throw error here, just log it and continue
-          setError('Product added but image upload failed')
+          console.error('Failed to upload images:', err)
+          setError('Product added but images upload failed')
         }
       }
 
@@ -143,22 +270,17 @@ export default function ProductsPage() {
     } catch (err) {
       setError('Failed to add product')
       console.error(err)
+    } finally {
+      setIsUploading(false)
     }
   }
   const handleUpdateProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedProduct) return
-    setError(null);
+    setError(null)
+    setIsUploading(true)
     try {
       const formData = new FormData(e.currentTarget)
-      
-      // Get the file from the file input
-      const imageFile = formData.get('image') as File
-      
-      // Only validate if a file was selected
-      if (imageFile && imageFile.size > 0 && !validateImageFile(imageFile)) {
-        return
-      }
 
       const updatedProduct = {
         nom_prod: formData.get('name') as string,
@@ -166,40 +288,43 @@ export default function ProductsPage() {
         prix_prod: parseFloat(formData.get('price') as string),
         qte_prod: parseInt(formData.get('stock') as string),
         categorie_id: parseInt(formData.get('category') as string),
-        details: {
-          taille: formData.get('taille') as string,
-          type: formData.get('type') as string,
-        }
+        features: JSON.parse(formData.get('features-data') as string || '{}')
       }
 
       console.log('Updating product:', selectedProduct.id, updatedProduct)
       const result = await updateProduct(selectedProduct.id, updatedProduct)
-      console.log('Product updated successfully:', result)      // If there's a new image, upload it (check that file exists and has size)
-      if (imageFile && imageFile.size > 0) {
-        setIsUploading(true)
+      console.log('Product updated successfully:', result)
+
+      // If there are new images to upload
+      const imageFiles = formData.getAll('image') as File[]
+      if (imageFiles.length > 0 && imageFiles[0].size > 0) {
         try {
-          console.log(`Uploading image for product ${result.id}, file size: ${imageFile.size} bytes`)
-          const imageFilename = await uploadProductImage(result.id, imageFile)
-          console.log('Image filename received:', imageFilename)
-          if (imageFilename) {
-            // The backend returns just the filename, not the full URL
-            result.images = result.images || []
-            result.images.push({ id: 0, url: imageFilename })
-          }
+          console.log(`Uploading images for product ${result.id}, total size: ${imageFiles.reduce((total, file) => total + file.size, 0)} bytes`)
+          const imageFilenames = await uploadProductImage(result.id, imageFiles)
+          console.log('Image filenames received:', imageFilenames)
+          
+          // Add new images to existing ones
+          result.images = [
+            ...result.images,
+            ...imageFilenames.map((filename, index) => ({
+              id: result.images.length + index,
+              url: filename
+            }))
+          ]
         } catch (err) {
-          console.error('Failed to upload image during update:', err)
-          // Don't throw error here, just log it and continue
-          setError('Product updated but image upload failed')
-        } finally {
-          setIsUploading(false)
+          console.error('Failed to upload images during update:', err)
+          setError('Product updated but images upload failed')
         }
       }
 
+      // Update the products state with the new data
       setProducts(prev => prev.map(p => p.id === result.id ? result : p))
       handleCloseModal()
     } catch (err) {
-      setError('Failed to update product')
-      console.error(err)
+      console.error('Failed to update product:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update product')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -431,11 +556,12 @@ export default function ProductsPage() {
                       required
                     />
                   </div>                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Image</label>
+                    <label className="block text-sm font-medium text-gray-700">Images</label>
                     <input
                       type="file"
                       name="image"
                       accept="image/*"
+                      multiple // Allow multiple file selection
                       className="mt-1 block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
@@ -443,35 +569,36 @@ export default function ProductsPage() {
                         file:bg-primary file:text-white
                         hover:file:bg-primary-dark"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Optional. Supported formats: JPG, PNG</p>                    {selectedProduct.images && selectedProduct.images.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">Optional. Multiple images supported. Formats: JPG, PNG, GIF, WebP</p>
+                    {selectedProduct?.images && selectedProduct.images.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-sm text-gray-500">Image actuelle:</p>
-                        <img 
-                          src={`http://localhost:8000/uploads/products/${selectedProduct.images[0].url}`} 
-                          alt={selectedProduct.nom_prod}
-                          className="mt-1 h-20 w-20 object-cover rounded-lg"
-                        />
+                        <p className="text-sm text-gray-500">Images actuelles:</p>
+                        <div className="grid grid-cols-4 gap-2 mt-1">
+                          {selectedProduct.images.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img 
+                                src={`http://localhost:8000/uploads/products/${image.url}`} 
+                                alt={`${selectedProduct.nom_prod} - ${index + 1}`}
+                                className="h-20 w-20 object-cover rounded-lg"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Taille</label>
-                    <input
-                      type="text"
-                      name="taille"
-                      defaultValue={selectedProduct.details?.taille || ''}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Type</label>
-                    <input
-                      type="text"
-                      name="type"
-                      defaultValue={selectedProduct.details?.type || ''}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                    />
-                  </div>
+                  <input 
+                    type="hidden" 
+                    name="features-data" 
+                    id="features-data" 
+                  />
+                  <FeatureInput
+                    initialFeatures={selectedProduct.features || {}}
+                    onChange={(features) => {
+                      const input = document.getElementById('features-data') as HTMLInputElement;
+                      input.value = JSON.stringify(features);
+                    }}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-4">
@@ -567,11 +694,12 @@ export default function ProductsPage() {
                       required
                     />
                   </div>                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Image</label>
+                    <label className="block text-sm font-medium text-gray-700">Images</label>
                     <input
                       type="file"
                       name="image"
                       accept="image/*"
+                      multiple // Allow multiple file selection
                       className="mt-1 block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
@@ -579,24 +707,20 @@ export default function ProductsPage() {
                         file:bg-primary file:text-white
                         hover:file:bg-primary-dark"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Optional. Supported formats: JPG, PNG</p>
+                    <p className="text-xs text-gray-500 mt-1">Optional. Multiple images supported. Formats: JPG, PNG, GIF, WebP</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Taille</label>
-                    <input
-                      type="text"
-                      name="taille"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Type</label>
-                    <input
-                      type="text"
-                      name="type"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                    />
-                  </div>
+                  <input 
+                    type="hidden" 
+                    name="features-data" 
+                    id="features-data-new" 
+                  />
+                  <FeatureInput
+                    initialFeatures={{}}
+                    onChange={(features) => {
+                      const input = document.getElementById('features-data-new') as HTMLInputElement;
+                      input.value = JSON.stringify(features);
+                    }}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-4">

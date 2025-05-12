@@ -25,9 +25,10 @@ if (
     isset($data->qte_prod) &&
     isset($data->prix_prod)
 ) {
-    $query = "INSERT INTO produit (nom_prod, qte_prod, prix_prod, description_prod, categorie_id, image) 
-              VALUES (:nom, :qte, :prix, :desc, :cat, :img) 
-              RETURNING id_prod, nom_prod, qte_prod, prix_prod, description_prod, categorie_id, image";
+    $query = "INSERT INTO produit (nom_prod, qte_prod, prix_prod, description_prod, categorie_id, features) 
+              VALUES (:nom, :qte, :prix, :desc, :cat, :features) 
+              RETURNING id_prod, nom_prod, qte_prod, prix_prod, description_prod, categorie_id, features";
+    
     $stmt = $db->prepare($query);
     $stmt->bindParam(":nom", $data->nom_prod);
     $stmt->bindParam(":qte", $data->qte_prod);
@@ -36,22 +37,26 @@ if (
     $stmt->bindParam(":desc", $desc);
     $cat = isset($data->categorie_id) ? $data->categorie_id : null;
     $stmt->bindParam(":cat", $cat);
-    $img = isset($data->image) ? $data->image : null;
-    $stmt->bindParam(":img", $img);
+    $features = isset($data->features) ? json_encode($data->features) : null;
+    $stmt->bindParam(":features", $features);
     
     if ($stmt->execute()) {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Initialize empty images array since this is a new product
+        $images = [];
+        
         http_response_code(201);
         echo json_encode([
             "message" => "Produit créé avec succès.",
-            "id" => $row['id_prod'],
+            "id" => intval($row['id_prod']),
             "nom_prod" => $row['nom_prod'],
             "description_prod" => $row['description_prod'],
             "prix_prod" => floatval($row['prix_prod']),
             "qte_prod" => intval($row['qte_prod']),
             "categorie_id" => intval($row['categorie_id']),
-            "image" => $row['image'],
-            "details" => null
+            "features" => $row['features'] ? json_decode($row['features']) : null,
+            "images" => $images
         ]);
     } else {
         http_response_code(500);

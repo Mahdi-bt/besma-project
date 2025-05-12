@@ -43,7 +43,7 @@ export default function Header() {
     router.push("/connexion")
   }
 
-  const isRegularUser = user && user.role === "user"
+  const isRegularUser = user && (user.role === "client" || user.role === "user")
   const isAdmin = user && (user.role === "admin" || user.role === "test")
 
   return (

@@ -1,12 +1,41 @@
 'use client'
 
 import Link from "next/link"
-import { getProducts } from "@/lib/data"
+import { useState, useEffect } from "react"
+import { getProducts } from "@/lib/api"
+import type { Product } from "@/lib/types"
 import ProductCard from "@/components/ProductCard"
 import { motion } from "framer-motion"
 
 export default function Produits() {
-  const products = getProducts()
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const apiProducts = await getProducts()
+        // Map API products to frontend Product type
+        const mappedProducts: Product[] = apiProducts.map((p: any) => ({
+          id: p.id,
+          name: p.nom_prod,
+          description: p.description_prod,
+          price: p.prix_prod,
+          stock: p.qte_prod,
+          category: p.categorie_id,
+          image: p.images?.[0]?.url || '/placeholder.jpg', // Use first image URL or placeholder
+          details: p.features || {},
+          images: Array.isArray(p.images) ? p.images : []
+        }))
+        setProducts(mappedProducts)
+      } catch (error) {
+        console.error('Failed to fetch products:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [])
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -97,11 +126,17 @@ export default function Produits() {
             animate="visible"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            {products.map((product) => (
-              <motion.div key={product.id} variants={itemVariants}>
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
+            {isLoading ? (
+              <div className="col-span-full flex justify-center items-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              products.map((product) => (
+                <motion.div key={product.id} variants={itemVariants}>
+                  <ProductCard product={product} />
+                </motion.div>
+              ))
+            )}
           </motion.div>
         </div>
       </section>

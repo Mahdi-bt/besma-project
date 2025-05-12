@@ -4,9 +4,11 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { getCategories, createCategory, updateCategory, deleteCategory, type Category } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
 
 export default function CategoriesPage() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -15,15 +17,8 @@ export default function CategoriesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (!storedUser) {
-      router.push("/connexion")
-      return
-    }
-
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== "admin") {
-      router.push("/connexion")
+    if (!isAuthenticated || !user || user.role !== 'admin') {
+      router.push('/connexion')
       return
     }
 
@@ -41,7 +36,7 @@ export default function CategoriesPage() {
     }
 
     loadCategories()
-  }, [router])
+  }, [router, isAuthenticated, user])
 
   const handleOpenModal = (category: Category) => {
     setSelectedCategory(category)

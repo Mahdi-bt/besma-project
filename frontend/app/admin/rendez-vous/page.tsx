@@ -1,10 +1,10 @@
- 'use client'
+"use client"
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { getRendezVous, updateRendezVous, deleteRendezVous, getUserById } from '@/lib/data'
-import type { RendezVous } from '@/lib/types'
+import { getRendezVous, updateRendezVousStatus } from '@/lib/api'
+import type { RendezVous } from '@/lib/api'
 
 export default function RendezVousPage() {
   const router = useRouter()
@@ -12,7 +12,7 @@ export default function RendezVousPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedRendezVous, setSelectedRendezVous] = useState<RendezVous | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [filterEtat, setFilterEtat] = useState<"all" | "en attente" | "confirmé" | "annulé" | "terminé">("all")
+  const [filterStatus, setFilterStatus] = useState<"all" | "en_attente" | "confirme" | "annule">("all")
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -28,10 +28,15 @@ export default function RendezVousPage() {
     }
 
     // Load rendez-vous
-    const loadRendezVous = () => {
-      const rendezVousData = getRendezVous()
-      setRendezVous(rendezVousData)
-      setIsLoading(false)
+    const loadRendezVous = async () => {
+      try {
+        const data = await getRendezVous()
+        setRendezVous(data)
+      } catch (error) {
+        console.error('Failed to load rendez-vous:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     loadRendezVous()
@@ -47,31 +52,19 @@ export default function RendezVousPage() {
     setSelectedRendezVous(null)
   }
 
-  const handleUpdateEtat = (id: number, newEtat: "en attente" | "confirmé" | "annulé" | "terminé") => {
-    const updatedRendezVous = updateRendezVous(id, { etat: newEtat })
-    if (updatedRendezVous) {
-      setRendezVous(prev => prev.map(r => r.id === id ? updatedRendezVous : r))
+  const handleUpdateStatus = async (id: number, newStatus: "en_attente" | "confirme" | "annule") => {
+    try {
+      await updateRendezVousStatus(id, newStatus)
+      setRendezVous(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
       handleCloseModal()
+    } catch (error) {
+      console.error('Failed to update status:', error)
     }
   }
 
-  const handleDeleteRendezVous = (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?')) {
-      const success = deleteRendezVous(id)
-      if (success) {
-        setRendezVous(prev => prev.filter(r => r.id !== id))
-      }
-    }
-  }
-
-  const filteredRendezVous = filterEtat === "all" 
+  const filteredRendezVous = filterStatus === "all" 
     ? rendezVous 
-    : rendezVous.filter(rdv => rdv.etat === filterEtat)
-
-  const getClientDetails = (clientId: number) => {
-    const user = getUserById(clientId)
-    return user || { nom: 'Utilisateur inconnu', prenom: '', email: 'N/A' }
-  }
+    : rendezVous.filter(rdv => rdv.status === filterStatus)
 
   if (isLoading) {
     return (
@@ -90,15 +83,14 @@ export default function RendezVousPage() {
             <h1 className="text-2xl font-bold text-gray-800">Gestion des Rendez-vous</h1>
             <div className="flex items-center gap-4">
               <select
-                value={filterEtat}
-                onChange={(e) => setFilterEtat(e.target.value as any)}
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
                 className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               >
                 <option value="all">Tous les états</option>
-                <option value="en attente">En attente</option>
-                <option value="confirmé">Confirmé</option>
-                <option value="annulé">Annulé</option>
-                <option value="terminé">Terminé</option>
+                <option value="en_attente">En attente</option>
+                <option value="confirme">Confirmé</option>
+                <option value="annule">Annulé</option>
               </select>
             </div>
           </div>
@@ -122,9 +114,6 @@ export default function RendezVousPage() {
                     Client
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Spécialiste
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -136,58 +125,45 @@ export default function RendezVousPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredRendezVous.map((rdv) => {
-                  const clientDetails = getClientDetails(rdv.clientId)
-                  return (
-                    <motion.tr
-                      key={rdv.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        #{rdv.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(rdv.date).toLocaleDateString('fr-FR')} {rdv.heure}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {clientDetails.prenom} {clientDetails.nom}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {rdv.specialiste}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {rdv.type}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                          ${rdv.etat === 'en attente' ? 'bg-yellow-100 text-yellow-800' : ''}
-                          ${rdv.etat === 'confirmé' ? 'bg-green-100 text-green-800' : ''}
-                          ${rdv.etat === 'annulé' ? 'bg-red-100 text-red-800' : ''}
-                          ${rdv.etat === 'terminé' ? 'bg-blue-100 text-blue-800' : ''}
-                        `}>
-                          {rdv.etat}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleOpenModal(rdv)}
-                          className="text-primary hover:text-primary-dark mr-4"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRendezVous(rdv.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Supprimer
-                        </button>
-                      </td>
-                    </motion.tr>
-                  )
-                })}
+                {filteredRendezVous.map((rdv) => (
+                  <motion.tr
+                    key={rdv.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      #{rdv.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rdv.date_rdv} {rdv.heure_rdv}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rdv.user_name || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {rdv.type_rdv}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                        ${rdv.status === 'en_attente' ? 'bg-yellow-100 text-yellow-800' : ''}
+                        ${rdv.status === 'confirme' ? 'bg-green-100 text-green-800' : ''}
+                        ${rdv.status === 'annule' ? 'bg-red-100 text-red-800' : ''}
+                      `}>
+                        {rdv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleOpenModal(rdv)}
+                        className="text-primary hover:text-primary-dark mr-4"
+                      >
+                        Modifier
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -218,21 +194,16 @@ export default function RendezVousPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-700 mb-2">Informations Client</h3>
                   <div className="bg-gray-50 rounded-lg p-4">
-                    {(() => {
-                      const clientDetails = getClientDetails(selectedRendezVous.clientId)
-                      return (
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Nom</span>
-                            <span className="font-medium">{clientDetails.nom} {clientDetails.prenom}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Email</span>
-                            <span className="font-medium">{clientDetails.email}</span>
-                          </div>
-                        </div>
-                      )
-                    })()}
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Nom</span>
+                        <span className="font-medium">{selectedRendezVous.user_name || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Email</span>
+                        <span className="font-medium">{selectedRendezVous.user_email || 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -243,63 +214,66 @@ export default function RendezVousPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Date</span>
                       <span className="font-medium">
-                        {new Date(selectedRendezVous.date).toLocaleDateString('fr-FR')} {selectedRendezVous.heure}
+                        {selectedRendezVous.date_rdv} {selectedRendezVous.heure_rdv}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Spécialiste</span>
-                      <span className="font-medium">{selectedRendezVous.specialiste}</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-gray-600">Type</span>
-                      <span className="font-medium">{selectedRendezVous.type}</span>
+                      <span className="font-medium">{selectedRendezVous.type_rdv}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Durée</span>
-                      <span className="font-medium">{selectedRendezVous.duree} minutes</span>
+                      <span className="text-gray-600">Description</span>
+                      <span className="font-medium">{selectedRendezVous.description || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Status Update */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Mettre à jour l'état</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Mettre à jour le statut</h3>
+                  <div className="flex gap-4">
                     <button
-                      onClick={() => handleUpdateEtat(selectedRendezVous.id, 'confirmé')}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                      onClick={() => handleUpdateStatus(selectedRendezVous.id, 'en_attente')}
+                      className={`px-4 py-2 rounded-lg ${
+                        selectedRendezVous.status === 'en_attente'
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      }`}
                     >
-                      Confirmer
+                      En attente
                     </button>
                     <button
-                      onClick={() => handleUpdateEtat(selectedRendezVous.id, 'annulé')}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                      onClick={() => handleUpdateStatus(selectedRendezVous.id, 'confirme')}
+                      className={`px-4 py-2 rounded-lg ${
+                        selectedRendezVous.status === 'confirme'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
                     >
-                      Annuler
+                      Confirmé
                     </button>
                     <button
-                      onClick={() => handleUpdateEtat(selectedRendezVous.id, 'terminé')}
-                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                      onClick={() => handleUpdateStatus(selectedRendezVous.id, 'annule')}
+                      className={`px-4 py-2 rounded-lg ${
+                        selectedRendezVous.status === 'annule'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}
                     >
-                      Terminer
-                    </button>
-                    <button
-                      onClick={() => handleUpdateEtat(selectedRendezVous.id, 'en attente')}
-                      className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
-                    >
-                      Remettre en attente
+                      Annulé
                     </button>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={handleCloseModal}
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
-                >
-                  Fermer
-                </button>
+                {/* Close Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  >
+                    Fermer
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

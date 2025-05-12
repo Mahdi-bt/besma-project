@@ -32,7 +32,7 @@ createdb bessma_db
 ### b. Create Tables
 Import the schema file:
 ```bash
-psql bessma_db < database/schema.sql
+psql -d besma-db -f backend/database/schema.sql
 ```
 
 ### c. Seed Data (Default Admin, Categories & Users)
@@ -45,7 +45,7 @@ Run the seed file to insert:
   - Claire Bernard (claire@example.com / user123)
 
 ```bash
-psql bessma_db < database/seed.sql
+psql -d besma-db -f backend/database/seed.sql
 ```
 
 ### d. Database Configuration

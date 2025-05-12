@@ -8,7 +8,7 @@ class Database {
 
     public function __construct() {
         $this->host = getenv('POSTGRES_HOST') ?: 'localhost';
-        $this->db_name = getenv('POSTGRES_DB') ?: 'bessma_db';
+        $this->db_name = getenv('POSTGRES_DB') ?: 'besma-db';
         $this->username = getenv('POSTGRES_USER') ?: 'postgres';
         $this->password = getenv('POSTGRES_PASSWORD') ?: 'postgres';
     }

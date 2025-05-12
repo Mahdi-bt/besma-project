@@ -1,21 +1,18 @@
 export interface Product {
   id: number
-  nom_prod: string
-  description_prod: string
-  prix_prod: number
-  qte_prod: number
-  categorie_id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  category: number
+  image: string
+  details?: {
+    [key: string]: any
+  }
   images: {
     id: number
     url: string
   }[]
-  details: null | {
-    taille?: string
-    type?: string
-    dateExpiration?: string
-    specialiste?: string
-    duree?: number
-  }
 }
 
 export interface Client {
@@ -52,12 +49,13 @@ export interface User {
   id: number
   email: string
   password: string
-  role: "admin" | "user"
+  role: "admin" | "user" | "client" | "test"
   nom: string
   prenom: string
   createdAt: string
   lastLogin?: string
 }
+
 export interface RendezVous {
   id: number
   date: string

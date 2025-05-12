@@ -3,38 +3,38 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { getUsers, type User } from "@/lib/data"
+import { getUsers, type User } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
 
 export default function UsersPage() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [filterRole, setFilterRole] = useState<"all" | "admin" | "user">("all")
+  const [filterRole, setFilterRole] = useState<"all" | "admin" | "client">("all")
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (!storedUser) {
-      router.push("/connexion")
-      return
-    }
-
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== "admin") {
-      router.push("/connexion")
+    if (!isAuthenticated || !user || user.role !== 'admin') {
+      router.push('/connexion')
       return
     }
 
     // Load users
-    const loadUsers = () => {
-      const usersData = getUsers()
-      setUsers(usersData)
-      setIsLoading(false)
+    const loadUsers = async () => {
+      try {
+        const usersData = await getUsers()
+        setUsers(usersData)
+      } catch (err) {
+        console.error('Failed to load users:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     loadUsers()
-  }, [router])
+  }, [router, isAuthenticated, user])
 
   const handleOpenModal = (user: User) => {
     setSelectedUser(user)
@@ -73,7 +73,7 @@ export default function UsersPage() {
               >
                 <option value="all">Tous les rôles</option>
                 <option value="admin">Administrateurs</option>
-                <option value="user">Utilisateurs</option>
+                <option value="client">Utilisateurs</option>
               </select>
             </div>
           </div>
@@ -99,9 +99,7 @@ export default function UsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Rôle
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Dernière connexion
-                  </th>
+                  
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -120,7 +118,7 @@ export default function UsersPage() {
                       #{user.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.prenom} {user.nom}
+                      {user.nom}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.email}
@@ -132,15 +130,7 @@ export default function UsersPage() {
                         {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('fr-FR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : 'Jamais'}
-                    </td>
+                    
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenModal(user)}
@@ -179,8 +169,8 @@ export default function UsersPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Nom complet</h3>
-                    <p className="mt-1 text-lg text-gray-900">{selectedUser.prenom} {selectedUser.nom}</p>
+                    <h3 className="text-sm font-medium text-gray-500">Nom</h3>
+                    <p className="mt-1 text-lg text-gray-900">{selectedUser.nom}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Email</h3>
@@ -190,16 +180,7 @@ export default function UsersPage() {
                     <h3 className="text-sm font-medium text-gray-500">Rôle</h3>
                     <p className="mt-1 text-lg text-gray-900">{selectedUser.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</p>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Compte créé le</h3>
-                    <p className="mt-1 text-lg text-gray-900">
-                      {new Date(selectedUser.createdAt).toLocaleDateString('fr-FR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
+                 
                 </div>
 
                 <div className="flex justify-end">

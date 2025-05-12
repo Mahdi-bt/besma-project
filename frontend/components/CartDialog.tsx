@@ -98,7 +98,10 @@ export default function CartDialog({ isOpen, onClose }: CartDialogProps) {
                         className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
                       >
                         <img
-                          src={item.product.image}
+                          src={item.product.images?.[0]?.url 
+                            ? `http://localhost:8000/uploads/products/${item.product.images[0].url}`
+                            : '/placeholder.jpg'
+                          }
                           alt={item.product.name}
                           className="w-20 h-20 object-cover rounded"
                         />
