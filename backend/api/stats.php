@@ -40,11 +40,17 @@ $stmt = $db->prepare("SELECT COUNT(*) as count FROM rendez_vous");
 $stmt->execute();
 $rendezVous = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
+// Get contact messages count
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM contact_messages");
+$stmt->execute();
+$messages = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+
 http_response_code(200);
 echo json_encode([
     "users" => intval($users),
     "products" => intval($products),
     "orders" => intval($orders),
     "categories" => intval($categories),
-    "rendezVous" => intval($rendezVous)
+    "rendezVous" => intval($rendezVous),
+    "messages" => intval($messages)
 ]); 

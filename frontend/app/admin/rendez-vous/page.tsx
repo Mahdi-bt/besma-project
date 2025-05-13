@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { getRendezVous, updateRendezVousStatus } from '@/lib/api'
 import type { RendezVous } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
+import { formatDate } from '@/lib/utils'
+import ReturnButton from '@/components/ReturnButton'
 
 export default function RendezVousPage() {
   const router = useRouter()
@@ -80,19 +83,20 @@ export default function RendezVousPage() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Gestion des Rendez-vous</h1>
             <div className="flex items-center gap-4">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-              >
-                <option value="all">Tous les états</option>
-                <option value="en_attente">En attente</option>
-                <option value="confirme">Confirmé</option>
-                <option value="annule">Annulé</option>
-              </select>
+              <ReturnButton href="/admin/dashboard" />
+              <h1 className="text-2xl font-bold text-gray-800">Gestion des rendez-vous</h1>
             </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="en attente">En attente</option>
+              <option value="confirmé">Confirmé</option>
+              <option value="annulé">Annulé</option>
+            </select>
           </div>
         </div>
       </header>

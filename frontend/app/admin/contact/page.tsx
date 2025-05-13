@@ -3,20 +3,22 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { getContactMessages, updateMessageStatus } from '@/lib/api'
-import type { ContactMessage } from '@/lib/api'
+import { getContactMessages, updateMessageStatus, ContactMessage } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { formatDate } from '@/lib/utils'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import ReturnButton from '@/components/ReturnButton'
+import { Loader2, Check, X, Mail } from 'lucide-react'
 
 export default function ContactMessagesPage() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
   const [messages, setMessages] = useState<ContactMessage[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [filterStatus, setFilterStatus] = useState<"all" | "unread" | "read" | "replied">("all")
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== 'admin') {
@@ -24,20 +26,18 @@ export default function ContactMessagesPage() {
       return
     }
 
-    // Load messages
-    const loadMessages = async () => {
+    const fetchMessages = async () => {
       try {
-        const messagesData = await getContactMessages()
-        setMessages(messagesData)
+        const data = await getContactMessages()
+        setMessages(data)
       } catch (err) {
-        setError('Failed to load messages')
-        console.error(err)
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue')
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
 
-    loadMessages()
+    fetchMessages()
   }, [router, isAuthenticated, user])
 
   const handleOpenModal = (message: ContactMessage) => {
@@ -50,144 +50,115 @@ export default function ContactMessagesPage() {
     setSelectedMessage(null)
   }
 
-  const handleUpdateStatus = async (id: number, newStatus: ContactMessage['status']) => {
+  const handleStatusUpdate = async (messageId: number, newStatus: ContactMessage['status']) => {
     try {
-      await updateMessageStatus(id, newStatus)
-      setMessages(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m))
-      handleCloseModal()
+      await updateMessageStatus(messageId, newStatus)
+      setMessages(messages.map(msg => 
+        msg.id === messageId ? { ...msg, status: newStatus } : msg
+      ))
     } catch (err) {
-      setError('Failed to update message status')
-      console.error(err)
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du statut')
     }
   }
 
-  const filteredMessages = filterStatus === "all" 
-    ? messages 
-    : messages.filter(message => message.status === filterStatus)
+  const filteredMessages = messages.filter(message => 
+    statusFilter === 'all' || message.status === statusFilter
+  )
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'unread':
-        return 'bg-red-100 text-red-800'
-      case 'read':
-        return 'bg-blue-100 text-blue-800'
-      case 'replied':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
+  if (!user || user.role !== 'admin') {
+    return null
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Messages de Contact</h1>
-            <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <ReturnButton href="/admin/dashboard" />
+                <h1 className="text-2xl font-semibold text-gray-900">Messages de contact</h1>
+              </div>
               <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="all">Tous les messages</option>
+                <option value="all">Tous les statuts</option>
                 <option value="unread">Non lus</option>
                 <option value="read">Lus</option>
                 <option value="replied">Répondus</option>
               </select>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Error Message */}
-      {error && (
-        <div className="container mx-auto px-4 py-2">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        </div>
-      )}
+          {error && (
+            <div className="px-4 py-3 bg-red-50 border-b border-red-200">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nom
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sujet
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMessages.map((message) => (
-                  <motion.tr
-                    key={message.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(message.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {message.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {message.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {message.subject}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(message.status)}`}>
-                        {message.status === 'unread' && 'Non lu'}
-                        {message.status === 'read' && 'Lu'}
-                        {message.status === 'replied' && 'Répondu'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <div className="divide-y divide-gray-200">
+            {filteredMessages.length === 0 ? (
+              <div className="px-4 py-5 sm:px-6 text-center text-gray-500">
+                Aucun message trouvé.
+              </div>
+            ) : (
+              filteredMessages.map((message) => (
+                <div key={message.id} className="px-4 py-5 sm:px-6 hover:bg-gray-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">{message.subject}</h3>
+                      <div className="mt-1 text-sm text-gray-500">
+                        <p>De: {message.name} ({message.email})</p>
+                        {message.user_name && (
+                          <p>Utilisateur: {message.user_name} ({message.user_email})</p>
+                        )}
+                        <p>Envoyé le {format(new Date(message.created_at), 'PPP', { locale: fr })}</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
                       <button
-                        onClick={() => handleOpenModal(message)}
-                        className="text-primary hover:text-primary-dark"
+                        onClick={() => handleStatusUpdate(message.id, 'read')}
+                        className={`p-2 rounded-full ${
+                          message.status === 'read' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-600'
+                        }`}
+                        title="Marquer comme lu"
                       >
-                        Voir détails
+                        <Check className="h-5 w-5" />
                       </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                      <button
+                        onClick={() => handleStatusUpdate(message.id, 'replied')}
+                        className={`p-2 rounded-full ${
+                          message.status === 'replied' ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:text-green-600'
+                        }`}
+                        title="Marquer comme répondu"
+                      >
+                        <Mail className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{message.message}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Message Details Modal */}
       <AnimatePresence>
@@ -240,7 +211,7 @@ export default function ContactMessagesPage() {
                     <h3 className="text-sm font-medium text-gray-500 mb-2">Statut</h3>
                     <div className="flex gap-4">
                       <button
-                        onClick={() => handleUpdateStatus(selectedMessage.id, 'unread')}
+                        onClick={() => handleStatusUpdate(selectedMessage.id, 'unread')}
                         className={`px-4 py-2 rounded-lg ${
                           selectedMessage.status === 'unread'
                             ? 'bg-red-500 text-white'
@@ -250,7 +221,7 @@ export default function ContactMessagesPage() {
                         Non lu
                       </button>
                       <button
-                        onClick={() => handleUpdateStatus(selectedMessage.id, 'read')}
+                        onClick={() => handleStatusUpdate(selectedMessage.id, 'read')}
                         className={`px-4 py-2 rounded-lg ${
                           selectedMessage.status === 'read'
                             ? 'bg-blue-500 text-white'
@@ -260,7 +231,7 @@ export default function ContactMessagesPage() {
                         Lu
                       </button>
                       <button
-                        onClick={() => handleUpdateStatus(selectedMessage.id, 'replied')}
+                        onClick={() => handleStatusUpdate(selectedMessage.id, 'replied')}
                         className={`px-4 py-2 rounded-lg ${
                           selectedMessage.status === 'replied'
                             ? 'bg-green-500 text-white'

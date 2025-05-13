@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, number } from 'framer-motion'
 import { getOrderDetails } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { Commande } from '@/lib/types'
+
+interface OrderProduct {
+  id_prod: number
+  nom_prod: string
+  prix_prod: number
+  stock_quantity: number
+  cart_quantity: number
+}
 
 interface OrderDetails {
   order: {
@@ -12,14 +21,18 @@ interface OrderDetails {
     date_cmd: string
     etat_cmd: string
     total: number
+    id_panier: number
+    id_user: number
+    user_nom: string
+    user_email: string
   }
-  products: {
-    id_prod: number
-    nom_prod: string
-    prix_prod: number
-    quantite: number
-    images: string
-  }[]
+  panier: {
+    id_panier: number
+    total: number
+    prix: number
+    qte: number
+  }
+  products: OrderProduct[]
   shipping: {
     nom: string
     prenom: string
@@ -37,6 +50,7 @@ export default function OrderConfirmation() {
   const searchParams = useSearchParams()
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const orderId = searchParams.get('id')
@@ -50,8 +64,9 @@ export default function OrderConfirmation() {
         setOrderDetails(details)
         setIsLoading(false)
       })
-      .catch(() => {
-        router.push('/produits')
+      .catch((err) => {
+        setError(err.message || 'Une erreur est survenue lors du chargement de la commande')
+        setIsLoading(false)
       })
   }, [router, searchParams])
 
@@ -59,6 +74,22 @@ export default function OrderConfirmation() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/produits')}
+            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            Retour aux produits
+          </button>
+        </div>
       </div>
     )
   }
@@ -91,19 +122,14 @@ export default function OrderConfirmation() {
               <h3 className="text-lg font-semibold text-gray-700">Produits commandés</h3>
               {orderDetails.products.map((product) => (
                 <div key={product.id_prod} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                  <img
-                    src={product.images || '/placeholder.png'}
-                    alt={product.nom_prod}
-                    className="w-16 h-16 object-cover rounded"
-                  />
                   <div className="flex-1">
                     <h4 className="font-medium">{product.nom_prod}</h4>
                     <p className="text-gray-600">
-                      {product.prix_prod.toFixed(2)} € x {product.quantite}
+                      {Number(product.prix_prod).toFixed(2)} € x {product.cart_quantity}
                     </p>
                   </div>
                   <div className="font-bold">
-                    {(product.prix_prod * product.quantite).toFixed(2)} €
+                    {(Number(product.prix_prod) * product.cart_quantity).toFixed(2)} €
                   </div>
                 </div>
               ))}
@@ -132,7 +158,9 @@ export default function OrderConfirmation() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Sous-total</span>
-                  <span className="font-medium">{orderDetails.order.total.toFixed(2)} €</span>
+                  <span className="font-medium">
+                    {Number(orderDetails.panier.total).toFixed(2)} €
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Frais de livraison</span>
@@ -140,7 +168,9 @@ export default function OrderConfirmation() {
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="text-lg font-medium">Total</span>
-                  <span className="text-2xl font-bold">{orderDetails.order.total.toFixed(2)} €</span>
+                  <span className="text-2xl font-bold">
+                    {Number(orderDetails.panier.total).toFixed(2)} €
+                  </span>
                 </div>
               </div>
             </div>

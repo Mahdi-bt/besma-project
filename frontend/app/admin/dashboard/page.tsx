@@ -15,7 +15,8 @@ export default function AdminDashboard() {
     products: 0,
     orders: 0,
     rendezVous: 0,
-    categories: 0
+    categories: 0,
+    messages: 0
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
       value: stats.orders,
       icon: '🛒',
       color: 'bg-purple-500',
-      link: '/admin/products/orders'
+      link: '/admin/orders'
     },
     {
       title: 'Categories',
@@ -77,11 +78,12 @@ export default function AdminDashboard() {
       icon: '📅',
       color: 'bg-pink-500',
       link: '/admin/rendez-vous'
-    },{
+    },
+    {
       title: 'Messages',
-      value: 0,
-      icon: '📅',
-      color: 'bg-pink-500',
+      value: stats.messages,
+      icon: '📨',
+      color: 'bg-indigo-500',
       link: '/admin/contact'
     }
   ]

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { getCategories, createCategory, updateCategory, deleteCategory, type Category } from "@/lib/api"
 import { useAuth } from "@/context/AuthContext"
+import ReturnButton from "@/components/ReturnButton"
 
 export default function CategoriesPage() {
   const router = useRouter()
@@ -125,7 +126,10 @@ export default function CategoriesPage() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Gestion des Catégories</h1>
+            <div className="flex items-center gap-4">
+              <ReturnButton href="/admin/dashboard" />
+              <h1 className="text-2xl font-bold text-gray-800">Gestion des Catégories</h1>
+            </div>
             <button
               onClick={handleOpenAddModal}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"

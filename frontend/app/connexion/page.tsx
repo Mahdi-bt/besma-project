@@ -7,11 +7,6 @@ import LoginForm from "@/components/LoginForm"
 export default function Connexion() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Test Component */}
-      <div className="p-4 bg-red-100">
-        Test Component - If you can see this, the page is rendering
-      </div>
-
       {/* Hero Section */}
       <section className="relative py-20 px-4 bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="container mx-auto">

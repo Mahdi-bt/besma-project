@@ -80,9 +80,26 @@ try {
     foreach ($data['products'] as $prod) {
         if (!isset($prod['id']) || !isset($prod['quantity'])) continue;
 
-        $stmt = $db->prepare("UPDATE produit SET qte_prod = qte_prod - :quantity WHERE id_prod = :id");
-        $stmt->execute([':quantity' => $prod['quantity'], ':id' => $prod['id']]);
+        // First check if there's enough stock
+        $stmt = $db->prepare("SELECT qte_prod FROM produit WHERE id_prod = :id FOR UPDATE");
+        $stmt->execute([':id' => $prod['id']]);
+        $currentStock = $stmt->fetchColumn();
 
+        if ($currentStock < $prod['quantity']) {
+            throw new Exception("Stock insuffisant pour le produit ID: " . $prod['id']);
+        }
+
+        // Update the product quantity
+        $stmt = $db->prepare("UPDATE produit SET qte_prod = qte_prod - :quantity WHERE id_prod = :id");
+        $stmt->bindParam(':quantity', $prod['quantity'], PDO::PARAM_INT);
+        $stmt->bindParam(':id', $prod['id'], PDO::PARAM_INT);
+        $result = $stmt->execute();
+
+        if (!$result) {
+            throw new Exception("Erreur lors de la mise à jour du stock pour le produit ID: " . $prod['id']);
+        }
+
+        // Add to panier_produit
         $stmt = $db->prepare("INSERT INTO panier_produit (id_panier, id_prod, quantite) VALUES (:id_panier, :id_prod, :quantite)");
         $stmt->execute([
             ':id_panier' => $id_panier,
@@ -91,15 +108,20 @@ try {
         ]);
     }
 
-    // Create commande
-    $stmt = $db->prepare("INSERT INTO commande (etat_cmd, id_panier, id_user) VALUES ('en attente', :id_panier, :id_user)");
+    // Create commande first
+    $stmt = $db->prepare("INSERT INTO commande (etat_cmd, id_panier, id_user) VALUES ('en attente', :id_panier, :id_user) RETURNING id_cmd");
     $stmt->execute([':id_panier' => $id_panier, ':id_user' => $user->id]);
-    $id_cmd = $db->lastInsertId();
+    $id_cmd = $stmt->fetchColumn();
+
     if (!$id_cmd) {
         throw new Exception("La commande n'a pas pu être créée ou l'id_cmd n'a pas été retourné.");
     }
 
-    // Save shipping information
+    // Add initial status to order_status_history
+    $stmt = $db->prepare("INSERT INTO order_status_history (order_id, status, description) VALUES (:order_id, 'en attente', 'Votre commande est en cours de traitement')");
+    $stmt->execute([':order_id' => $id_cmd]);
+
+    // Save shipping information after commande is created
     $shipping = $data['shipping'];
     $stmt = $db->prepare("
         INSERT INTO shipping_info (
@@ -139,7 +161,6 @@ try {
     }
     http_response_code(400);
     echo json_encode([
-        "message" => "Erreur lors de la création de la commande: " . $e->getMessage(),
-        "trace" => $e->getTraceAsString()
+        "message" => "Erreur lors de la création de la commande: " . $e->getMessage()
     ]);
 }

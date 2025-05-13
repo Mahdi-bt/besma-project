@@ -2,16 +2,14 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { addRendezVous } from '@/lib/data'
+import { createRendezVous } from '@/lib/api'
 
 export default function RendezVousForm() {
   const [formData, setFormData] = useState({
-    date: '',
-    heure: '',
-    specialiste: '',
-    type: 'consultation' as const,
-    notes: '',
-    duree: 60
+    date_rdv: '',
+    heure_rdv: '',
+    type_rdv: 'consultation' as const,
+    description: ''
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -30,24 +28,14 @@ export default function RendezVousForm() {
         throw new Error('Vous devez être connecté pour prendre rendez-vous')
       }
 
-      const user = JSON.parse(userData)
-      const newRendezVous = addRendezVous({
-        ...formData,
-        clientId: user.id,
-        etat: 'en attente'
+      await createRendezVous(formData)
+      setSuccess(true)
+      setFormData({
+        date_rdv: '',
+        heure_rdv: '',
+        type_rdv: 'consultation',
+        description: ''
       })
-
-      if (newRendezVous) {
-        setSuccess(true)
-        setFormData({
-          date: '',
-          heure: '',
-          specialiste: '',
-          type: 'consultation',
-          notes: '',
-          duree: 60
-        })
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
@@ -58,60 +46,42 @@ export default function RendezVousForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="date_rdv" className="block text-sm font-medium text-gray-700">
           Date souhaitée
         </label>
         <input
           type="date"
-          id="date"
+          id="date_rdv"
           required
-          value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+          value={formData.date_rdv}
+          onChange={(e) => setFormData({ ...formData, date_rdv: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
         />
       </div>
 
       <div>
-        <label htmlFor="heure" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="heure_rdv" className="block text-sm font-medium text-gray-700">
           Heure souhaitée
         </label>
         <input
           type="time"
-          id="heure"
+          id="heure_rdv"
           required
-          value={formData.heure}
-          onChange={(e) => setFormData({ ...formData, heure: e.target.value })}
+          value={formData.heure_rdv}
+          onChange={(e) => setFormData({ ...formData, heure_rdv: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
         />
       </div>
 
       <div>
-        <label htmlFor="specialiste" className="block text-sm font-medium text-gray-700">
-          Spécialiste
-        </label>
-        <select
-          id="specialiste"
-          required
-          value={formData.specialiste}
-          onChange={(e) => setFormData({ ...formData, specialiste: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-        >
-          <option value="">Sélectionnez un spécialiste</option>
-          <option value="Dr. Martin">Dr. Martin</option>
-          <option value="Dr. Dubois">Dr. Dubois</option>
-          <option value="Dr. Petit">Dr. Petit</option>
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="type_rdv" className="block text-sm font-medium text-gray-700">
           Type de rendez-vous
         </label>
         <select
-          id="type"
+          id="type_rdv"
           required
-          value={formData.type}
-          onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+          value={formData.type_rdv}
+          onChange={(e) => setFormData({ ...formData, type_rdv: e.target.value as any })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
         >
           <option value="consultation">Consultation</option>
@@ -121,32 +91,14 @@ export default function RendezVousForm() {
       </div>
 
       <div>
-        <label htmlFor="duree" className="block text-sm font-medium text-gray-700">
-          Durée (minutes)
-        </label>
-        <select
-          id="duree"
-          required
-          value={formData.duree}
-          onChange={(e) => setFormData({ ...formData, duree: parseInt(e.target.value) })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-        >
-          <option value="30">30 minutes</option>
-          <option value="45">45 minutes</option>
-          <option value="60">1 heure</option>
-          <option value="90">1 heure 30</option>
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-          Notes additionnelles
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          Description
         </label>
         <textarea
-          id="notes"
+          id="description"
           rows={4}
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
           placeholder="Décrivez brièvement la raison de votre rendez-vous..."
         />

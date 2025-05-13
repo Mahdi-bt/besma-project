@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { getProducts } from "@/lib/api"
+import { getProducts, getCategories } from "@/lib/api"
 import type { Product } from "@/lib/types"
 import ProductCard from "@/components/ProductCard"
 import { motion } from "framer-motion"
@@ -10,6 +10,9 @@ import { motion } from "framer-motion"
 export default function Produits() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -36,6 +39,49 @@ export default function Produits() {
     }
     fetchProducts()
   }, [])
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const cats = await getCategories();
+        console.log('Fetched categories:', cats); // DEBUG LOG
+        const mapped = cats.map((cat: any) => ({
+          id: cat.id_categorie,
+          name: cat.nom_categorie
+        }));
+        console.log('Mapped categories:', mapped); // DEBUG LOG
+        setCategories(mapped);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const filteredProducts = selectedCategory
+    ? products.filter((product) => {
+        // Debug logging to verify filtering
+        console.log('Filtering product:', {
+          productId: product.id,
+          productCategory: product.category,
+          selectedCategory,
+          matches: String(product.category) === String(selectedCategory)
+        });
+        return String(product.category) === String(selectedCategory);
+      })
+    : products;
+
+  // Debug logging for category selection
+  useEffect(() => {
+    console.log('Selected category changed:', {
+      selectedCategory,
+      availableCategories: categories,
+      filteredProductsCount: filteredProducts.length
+    });
+  }, [selectedCategory, categories, filteredProducts]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -86,37 +132,38 @@ export default function Produits() {
             animate="visible"
             className="flex flex-wrap justify-center gap-4 mb-16"
           >
-            <motion.div variants={itemVariants}>
-              <Link
-                href="/produits/vetements"
-                className="group relative bg-white hover:bg-primary text-primary hover:text-white font-bold py-3 px-6 rounded-full shadow-md hover:shadow-xl transition-all duration-300 inline-flex items-center"
-              >
-                <span className="relative z-10">Vêtements</span>
-                <div className="absolute inset-0 bg-primary/10 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              </Link>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Link
-                href="/produits/nourritures"
-                className="group relative bg-white hover:bg-primary text-primary hover:text-white font-bold py-3 px-6 rounded-full shadow-md hover:shadow-xl transition-all duration-300 inline-flex items-center"
-              >
-                <span className="relative z-10">Nourritures</span>
-                <div className="absolute inset-0 bg-primary/10 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              </Link>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Link
-                href="/produits/rendez-vous"
-                className="group relative bg-white hover:bg-primary text-primary hover:text-white font-bold py-3 px-6 rounded-full shadow-md hover:shadow-xl transition-all duration-300 inline-flex items-center"
-              >
-                <span className="relative z-10">Rendez-vous</span>
-                <div className="absolute inset-0 bg-primary/10 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-              </Link>
-            </motion.div>
-
-            
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`group relative font-bold py-3 px-6 rounded-full shadow-md transition-all duration-300 inline-flex items-center ${
+                selectedCategory === null
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-primary hover:bg-primary hover:text-white'
+              }`}
+            >
+              <span className="relative z-10">Tous</span>
+            </button>
+            {loadingCategories ? (
+              <div className="text-gray-500 py-4">Chargement des catégories...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-gray-500 py-4">Aucune catégorie trouvée</div>
+            ) : (
+              categories
+                .filter(cat => cat.id !== undefined && cat.id !== null && cat.id !== '')
+                .map((cat) => (
+                  <motion.div key={String(cat.id)} variants={itemVariants}>
+                    <button
+                      onClick={() => setSelectedCategory(String(cat.id))}
+                      className={`group relative font-bold py-3 px-6 rounded-full shadow-md transition-all duration-300 inline-flex items-center ${
+                        selectedCategory === String(cat.id)
+                          ? 'bg-primary text-white'
+                          : 'bg-white text-primary hover:bg-primary hover:text-white'
+                      }`}
+                    >
+                      <span className="relative z-10">{cat.name}</span>
+                    </button>
+                  </motion.div>
+                ))
+            )}
           </motion.div>
 
           {/* Products Grid */}
@@ -131,7 +178,7 @@ export default function Produits() {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              products.map((product) => (
+              filteredProducts.map((product) => (
                 <motion.div key={product.id} variants={itemVariants}>
                   <ProductCard product={product} />
                 </motion.div>

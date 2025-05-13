@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { getCommandesByClient, getOrderDetails, updateOrderStatus } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
+import ReturnButton from "@/components/ReturnButton"
 
 interface Order {
   id_cmd: number
@@ -17,6 +18,8 @@ interface Order {
   shipping_nom?: string
   shipping_prenom?: string
   shipping_ville?: string
+  user_nom?: string
+  user_email?: string
 }
 
 interface OrderWithDetails extends Order {
@@ -33,11 +36,9 @@ interface OrderWithDetails extends Order {
     description: string
   }[]
   status_description?: string
-  user_nom?: string
-  user_email?: string
 }
 
-export default function UserOrders() {
+export default function AdminOrders() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
   const [orders, setOrders] = useState<Order[]>([])
@@ -45,17 +46,18 @@ export default function UserOrders() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !user || user.role !== 'admin') {
       router.push('/connexion')
       return
     }
-    
+
     const fetchOrders = async () => {
       try {
-        // For admin, pass 0 as client_id to get all orders
-        const userOrders = await getCommandesByClient(user.role === 'admin' ? 0 : user.id)
+        const userOrders = await getCommandesByClient(0) // 0 for admin to get all orders
         setOrders(userOrders)
       } catch (error) {
         console.error('Failed to fetch orders:', error)
@@ -86,13 +88,13 @@ export default function UserOrders() {
   }
 
   const handleStatusUpdate = async (newStatus: string) => {
-    if (!selectedOrder || user?.role !== 'admin') return
+    if (!selectedOrder || isUpdating) return;
 
-    setIsUpdating(true)
-    setUpdateError(null)
+    setIsUpdating(true);
+    setUpdateError(null);
 
     try {
-      const result = await updateOrderStatus(selectedOrder.id_cmd, newStatus)
+      const result = await updateOrderStatus(selectedOrder.id_cmd, newStatus);
       
       // Update local state
       setSelectedOrder(prev => prev ? {
@@ -102,24 +104,24 @@ export default function UserOrders() {
           {
             status: newStatus,
             created_at: new Date().toISOString(),
-            description: result.message
+            description: `Status updated to ${newStatus}`
           },
           ...(prev.status_history || [])
         ]
-      } : null)
+      } : null);
 
       // Update orders list
       setOrders(prev => prev.map(order => 
         order.id_cmd === selectedOrder.id_cmd 
           ? { ...order, etat_cmd: newStatus }
           : order
-      ))
+      ));
     } catch (error) {
-      setUpdateError(error instanceof Error ? error.message : 'Failed to update status')
+      setUpdateError(error instanceof Error ? error.message : 'Failed to update status');
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -136,6 +138,17 @@ export default function UserOrders() {
     }
   }
 
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = 
+      order.id_cmd.toString().includes(searchTerm) ||
+      (order.user_nom?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (order.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+    
+    const matchesStatus = statusFilter === 'all' || order.etat_cmd === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
@@ -147,17 +160,40 @@ export default function UserOrders() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">
-          {user?.role === 'admin' ? 'Gestion des commandes' : 'Mes commandes'}
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <ReturnButton href="/admin/dashboard" />
+            <h1 className="text-3xl font-bold text-gray-800">Gestion des commandes</h1>
+          </div>
+          <div className="flex gap-4">
+            <input
+              type="text"
+              placeholder="Rechercher une commande..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="en attente">En attente</option>
+              <option value="en cours">En cours</option>
+              <option value="livrée">Livrée</option>
+              <option value="annulée">Annulée</option>
+            </select>
+          </div>
+        </div>
 
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600">Aucune commande trouvée.</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <motion.div
                 key={order.id_cmd}
                 initial={{ opacity: 0, y: 20 }}
@@ -173,6 +209,11 @@ export default function UserOrders() {
                       <p className="text-sm text-gray-500">
                         {formatDate(order.date_cmd)}
                       </p>
+                      {order.user_nom && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Client: {order.user_nom} ({order.user_email})
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-4">
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.etat_cmd)}`}>
@@ -238,31 +279,33 @@ export default function UserOrders() {
                     </p>
                   </div>
 
-                  {/* Status Update Controls - Only for admin */}
-                  {user?.role === 'admin' && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Mettre à jour le statut</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {['en attente', 'en cours', 'livrée', 'annulée'].map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => handleStatusUpdate(status)}
-                            disabled={isUpdating || status === selectedOrder.etat_cmd}
-                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors
-                              ${status === selectedOrder.etat_cmd 
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                : getStatusColor(status) + ' hover:opacity-80'
-                              }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                      {updateError && (
-                        <p className="mt-2 text-sm text-red-600">{updateError}</p>
-                      )}
+                  {/* Status Update Controls */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Mettre à jour le statut</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['en attente', 'en cours', 'livrée', 'annulée'].map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => handleStatusUpdate(status)}
+                          disabled={isUpdating || status === selectedOrder.etat_cmd}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors
+                            ${status === selectedOrder.etat_cmd 
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : getStatusColor(status) + ' hover:opacity-80'
+                            }`}
+                        >
+                          {isUpdating && status === selectedOrder.etat_cmd ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                          ) : (
+                            status
+                          )}
+                        </button>
+                      ))}
                     </div>
-                  )}
+                    {updateError && (
+                      <p className="mt-2 text-sm text-red-600">{updateError}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Status History */}
@@ -285,22 +328,20 @@ export default function UserOrders() {
                 )}
               </div>
 
-              {/* Customer Information - Only for admin */}
-              {user?.role === 'admin' && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Informations client</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Nom</span>
-                      <span className="font-medium">{selectedOrder.user_nom}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Email</span>
-                      <span className="font-medium">{selectedOrder.user_email}</span>
-                    </div>
+              {/* Customer Information */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Informations client</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Nom</span>
+                    <span className="font-medium">{selectedOrder.user_nom}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Email</span>
+                    <span className="font-medium">{selectedOrder.user_email}</span>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Products Section */}
               {selectedOrder.productDetails && selectedOrder.productDetails.length > 0 && (
@@ -366,4 +407,4 @@ export default function UserOrders() {
       )}
     </div>
   )
-}
+} 

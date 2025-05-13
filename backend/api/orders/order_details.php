@@ -30,7 +30,17 @@ if ($order_id <= 0) {
 try {
     // Get order info
     $stmt = $db->prepare("
-        SELECT c.*, u.nom as user_nom, u.email as user_email 
+        SELECT 
+            c.*, 
+            u.nom as user_nom, 
+            u.email as user_email,
+            CASE 
+                WHEN c.etat_cmd = 'en attente' THEN 'Votre commande est en cours de traitement'
+                WHEN c.etat_cmd = 'en cours' THEN 'Votre commande est en cours de préparation'
+                WHEN c.etat_cmd = 'livrée' THEN 'Votre commande a été livrée'
+                WHEN c.etat_cmd = 'annulée' THEN 'Votre commande a été annulée'
+                ELSE 'Statut inconnu'
+            END as status_description
         FROM commande c 
         JOIN users u ON c.id_user = u.id 
         WHERE c.id_cmd = :id
@@ -61,12 +71,12 @@ try {
         SELECT 
             p.id_prod, 
             p.nom_prod, 
-            p.prix_prod, 
-            COUNT(*) as quantite
+            CAST(p.prix_prod AS FLOAT) as prix_prod,
+            p.qte_prod as stock_quantity,
+            pp.quantite as cart_quantity
         FROM panier_produit pp 
         JOIN produit p ON pp.id_prod = p.id_prod 
-        WHERE pp.id_panier = :id_panier 
-        GROUP BY p.id_prod, p.nom_prod, p.prix_prod
+        WHERE pp.id_panier = :id_panier
     ");
     $stmt->execute([':id_panier' => $order['id_panier']]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -76,12 +86,32 @@ try {
     $stmt->execute([':commande_id' => $order_id]);
     $shipping = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // Get order status history
+    $stmt = $db->prepare("
+        SELECT 
+            status,
+            created_at,
+            CASE 
+                WHEN status = 'en attente' THEN 'Votre commande est en cours de traitement'
+                WHEN status = 'en cours' THEN 'Votre commande est en cours de préparation'
+                WHEN status = 'livrée' THEN 'Votre commande a été livrée'
+                WHEN status = 'annulée' THEN 'Votre commande a été annulée'
+                ELSE 'Statut inconnu'
+            END as description
+        FROM order_status_history 
+        WHERE order_id = :order_id 
+        ORDER BY created_at DESC
+    ");
+    $stmt->execute([':order_id' => $order_id]);
+    $statusHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     http_response_code(200);
     echo json_encode([
         "order" => $order,
         "panier" => $panier,
         "products" => $products,
-        "shipping" => $shipping
+        "shipping" => $shipping,
+        "status_history" => $statusHistory
     ]);
 
 } catch (Exception $e) {
