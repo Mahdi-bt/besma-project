@@ -8,88 +8,117 @@ This backend is built with PHP and PostgreSQL. It provides authentication, produ
 - PostgreSQL 14 or newer
 - curl (for testing endpoints)
 
-## 1. Clone the Repository
+## Step-by-Step Setup Guide
+
+### 1. Clone and Navigate
 ```bash
 git clone <your-repo-url>
 cd bessma-project/backend
 ```
 
-## 2. Install Dependencies
-Install PHP dependencies using Composer:
+### 2. Install Dependencies
 ```bash
 composer install
 ```
-This will install the required packages including the JWT library for authentication.
 
-## 3. Database Setup
+### 3. Database Setup
 
-### a. Create the Database
-Make sure PostgreSQL is running, then create the database:
+#### a. Start PostgreSQL
+Make sure PostgreSQL service is running on your system.
+
+#### b. Create Database
 ```bash
 createdb bessma_db
 ```
 
-### b. Create Tables
-Import the schema file:
-```bash
-psql -d besma-db -f backend/database/schema.sql
-```
-
-### c. Seed Data (Default Admin, Categories & Users)
-Run the seed file to insert:
-- A default administrator (admin@bessma.com / admin123)
-- Default categories ("Vêtements", "Nourriture")
-- Default users (clients):
-  - Alice Dupont (alice@example.com / user123)
-  - Bob Martin (bob@example.com / user123)
-  - Claire Bernard (claire@example.com / user123)
-
-```bash
-psql -d besma-db -f backend/database/seed.sql
-```
-
-### d. Database Configuration
-Edit `config/database.php` if you need to change the database name, user, or password:
+#### c. Configure Database Connection
+Edit `config/database.php` with your PostgreSQL credentials:
 ```php
-// config/database.php
 $host = "localhost";
-$db_name = "bessma_db";
+$db_name = "bessma-db";
 $username = "your_postgres_user";
 $password = "your_postgres_password";
 ```
 
-## 4. Start the PHP Server
-From the `backend` directory, run:
+#### d. Import Database Schema
 ```bash
+psql -d bessma_db -f database/schema.sql
+```
+
+### 4. Start the Server
+
+#### Option 1: Automatic Setup (Recommended)
+Run the following command from the `backend` directory:
+```bash
+php start.php
+```
+
+This will automatically:
+- Check and seed the database if needed
+- Create default admin and user accounts
+- Set up default categories
+- Copy seed images
+- Start the PHP development server
+
+#### Option 2: Manual Setup
+If you prefer to set up manually:
+```bash
+# Seed the database
+psql -d bessma_db -f database/seed.sql
+
+# Start PHP server
 php -S localhost:8000
 ```
 
-The API will be available at `http://localhost:8000`.
+### 5. Verify Installation
+The API will be available at `http://localhost:8000`
 
-## 5. API Endpoints
-- Auth: `/api/auth/register.php`, `/api/auth/login.php`, `/api/auth/admin_login.php`
-- Products: `/api/products/read.php`, `/api/products/read_one.php`, etc.
-- Categories: `/api/categories/create.php`, `/api/categories/read.php`, etc.
-
-See the included `bessma-api.postman_collection.json` for ready-to-use Postman requests.
-
-## 6. Testing
-You can use curl or Postman to test the endpoints. Example:
+Test the connection using curl:
 ```bash
 curl -X POST http://localhost:8000/api/auth/login.php \
   -H "Content-Type: application/json" \
-  -d '{"email":"testuser@example.com","password":"testpass123"}'
+  -d '{"email":"admin@bessma.com","password":"admin123"}'
 ```
 
-## 7. File Uploads
-Product images are stored in `backend/uploads/products/` (create this directory if it doesn't exist).
+## Default Accounts
+After setup, you can use these accounts:
 
-## 8. Troubleshooting
-- Make sure your PHP installation supports `password_hash` and `password_verify`.
-- Check your PostgreSQL service is running.
-- Review CORS headers in the API files if you have frontend/backend on different ports.
-- If you get a "Failed to open stream: No such file or directory" error for vendor/autoload.php, make sure you've run `composer install`.
+### Admin Account
+- Email: admin@bessma.com
+- Password: admin123
 
----
+### User Accounts
+- Alice Dupont (alice@example.com / user123)
+- Bob Martin (bob@example.com / user123)
+- Claire Bernard (claire@example.com / user123)
 
-For any issues, please check the code comments or contact the maintainer. 
+## API Documentation
+- Auth endpoints: `/api/auth/register.php`, `/api/auth/login.php`, `/api/auth/admin_login.php`
+- Product endpoints: `/api/products/read.php`, `/api/products/read_one.php`, etc.
+- Category endpoints: `/api/categories/create.php`, `/api/categories/read.php`, etc.
+
+For detailed API documentation, see the included `bessma-api.postman_collection.json`.
+
+## Troubleshooting
+
+### Common Issues
+1. **Database Connection Issues**
+   - Verify PostgreSQL is running
+   - Check database credentials in `config/database.php`
+   - Ensure database `bessma_db` exists
+
+2. **PHP Dependencies**
+   - Run `composer install` if you see missing dependency errors
+   - Verify PHP version is 8.x or newer
+
+3. **File Permissions**
+   - Ensure `uploads/products/` directory is writable
+   - Check permissions on `seed_images/` directory
+
+4. **Server Issues**
+   - If automatic setup fails, run manually:
+     ```bash
+     php scripts/setup.php
+     ```
+
+For additional help, please check the code comments or contact the maintainer. 

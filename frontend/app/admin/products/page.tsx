@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { getProducts, createProduct, updateProduct, deleteProduct, uploadProductImage, deleteProductImage, getCategories, type Category, type Product } from "@/lib/api"
 import { useAuth } from "@/context/AuthContext"
+import ReturnButton from "@/components/ReturnButton"
 
 // Feature input interface
 interface Feature {
@@ -363,7 +364,10 @@ export default function ProductsPage() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Gestion des Produits</h1>
+            <div className="flex items-center gap-4">
+              <ReturnButton href="/admin/dashboard" />
+              <h1 className="text-2xl font-bold text-gray-800">Gestion des Produits</h1>
+            </div>
             <div className="flex items-center gap-4">
               <select
                 value={filterCategory}

@@ -3,19 +3,22 @@
 import type React from "react"
 
 import { useState } from "react"
+import { submitContactMessage } from "@/lib/api"
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
-    nom: "",
-    prenom: "",
-    telephone: "",
+    name: "",
     email: "",
+    subject: "",
+    message: "",
+    telephone: "",
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -26,24 +29,34 @@ export default function ContactForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError("")
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Mock success
-    setSubmitSuccess(true)
-    setIsSubmitting(false)
-
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setSubmitSuccess(false)
-      setFormData({
-        nom: "",
-        prenom: "",
-        telephone: "",
-        email: "",
+    try {
+      await submitContactMessage({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message
       })
-    }, 3000)
+      
+      setSubmitSuccess(true)
+      
+      // Reset form after 3 seconds
+      setTimeout(() => {
+        setSubmitSuccess(false)
+        setFormData({
+          name: "",
+          email: "",
+          subject: "",
+          message: "",
+          telephone: "",
+        })
+      }, 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur s'est produite")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -71,46 +84,22 @@ export default function ContactForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {error && (
+            <div className="md:col-span-2 p-4 text-red-700 bg-red-100 rounded-lg">
+              {error}
+            </div>
+          )}
+          
           <div>
-            <label htmlFor="nom" className="block text-gray-700 font-medium mb-1">
-              Nom
+            <label htmlFor="name" className="block text-gray-700 font-medium mb-1">
+              Nom Complet
             </label>
             <input
               type="text"
-              id="nom"
+              id="name"
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Votre nom"
-              value={formData.nom}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="prenom" className="block text-gray-700 font-medium mb-1">
-              Prénom
-            </label>
-            <input
-              type="text"
-              id="prenom"
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Votre prénom"
-              value={formData.prenom}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="telephone" className="block text-gray-700 font-medium mb-1">
-              Téléphone
-            </label>
-            <input
-              type="tel"
-              id="telephone"
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Numéro de téléphone"
-              value={formData.telephone}
+              placeholder="Votre nom complet"
+              value={formData.name}
               onChange={handleChange}
               required
             />
@@ -131,10 +120,54 @@ export default function ContactForm() {
             />
           </div>
 
+          <div>
+            <label htmlFor="telephone" className="block text-gray-700 font-medium mb-1">
+              Téléphone (optionnel)
+            </label>
+            <input
+              type="tel"
+              id="telephone"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Votre numéro de téléphone"
+              value={formData.telephone}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="subject" className="block text-gray-700 font-medium mb-1">
+              Sujet
+            </label>
+            <input
+              type="text"
+              id="subject"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Sujet de votre message"
+              value={formData.subject}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="message" className="block text-gray-700 font-medium mb-1">
+              Message
+            </label>
+            <textarea
+              id="message"
+              rows={4}
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Votre message"
+              value={formData.message}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded transition-colors"
+              className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Envoi en cours..." : "Envoyer"}

@@ -48,7 +48,7 @@ CREATE TABLE panier_produit (
 CREATE TABLE commande (
     id_cmd SERIAL PRIMARY KEY,
     date_cmd TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    etat_cmd VARCHAR(50) NOT NULL,
+    etat_cmd VARCHAR(50) NOT NULL CHECK (etat_cmd IN ('en attente', 'en cours', 'livrée', 'annulée')),
     id_panier INTEGER REFERENCES panier(id_panier),
     id_user INTEGER REFERENCES users(id)
 );
@@ -67,9 +67,13 @@ CREATE TABLE contact_messages (
     email VARCHAR(100) NOT NULL,
     subject VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied'))
 );
+
+-- Create index for contact_messages user_id
+CREATE INDEX idx_contact_messages_user_id ON contact_messages(user_id);
 
 -- Table RENDEZ_VOUS
 CREATE TABLE rendez_vous (
@@ -98,3 +102,30 @@ CREATE TABLE shipping_info (
     pays VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Table ORDER_STATUS_HISTORY
+CREATE TABLE order_status_history (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES commande(id_cmd) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('en attente', 'en cours', 'livrée', 'annulée')),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by INTEGER REFERENCES users(id)
+);
+
+-- Add trigger to automatically record status changes
+CREATE OR REPLACE FUNCTION record_order_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.etat_cmd IS NULL OR NEW.etat_cmd != OLD.etat_cmd THEN
+        INSERT INTO order_status_history (order_id, status, updated_by)
+        VALUES (NEW.id_cmd, NEW.etat_cmd, NEW.id_user);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_status_change_trigger
+AFTER INSERT OR UPDATE ON commande
+FOR EACH ROW
+EXECUTE FUNCTION record_order_status_change();
