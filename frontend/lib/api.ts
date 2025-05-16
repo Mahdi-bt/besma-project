@@ -1,3 +1,4 @@
+
 const API_URL = 'http://localhost:8000/api'
 
 export interface Product {
@@ -47,10 +48,9 @@ export async function createProduct(product: Omit<Product, 'id' | 'images'>): Pr
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': token
+    'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(product),
-    credentials: 'include'
   });
 
   if (response.status === 401) {
@@ -91,10 +91,9 @@ export async function updateProduct(id: number, product: Partial<Product>): Prom
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': token
+    'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ id_prod: id, ...product }),
-    credentials: 'include'
   });
   
   if (response.status === 401) {
@@ -129,9 +128,9 @@ export async function deleteProduct(id: number): Promise<boolean> {
   const response = await fetch(`${API_URL}/products/delete.php?id=${id}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': token
+    'Authorization': `Bearer ${token}`
     },
-    credentials: 'include'
+    
   });
   
   if (response.status === 401) {
